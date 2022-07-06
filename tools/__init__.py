@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import sys
+sys.path.append('./')
+
 from tools import argument_parsing
 from tools import dataset_creation
 from tools import captions_functions
 from tools import csv_functions
 from tools import file_io
-from tools import model
 from tools import printing
 from tools import features_log_mel_bands
 

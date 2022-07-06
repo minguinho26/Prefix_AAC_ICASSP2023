@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
-import sys
-sys.path.append('/home/minkyukim/models/CLIP_AAC_implementation_project/ACLIP')
+import os
 
 from typing import List, Tuple
 from pathlib import Path
@@ -84,7 +82,7 @@ class ClothoDataset(Dataset):
 
         in_e, ou_e = [ex[i].item() for i in [self.input_name, self.output_name]]
         
-        path_to_audio = '/home/minkyukim/models/CLIP_AAC_implementation_project/data/clotho_audio_files/' + self.split + '/' + ex.file_name[0]
+        path_to_audio = os.path.dirname(os.path.abspath(os.path.dirname(__file__))) + '/data/clotho_audio_files/' + self.split + '/' + ex.file_name[0]
         # padding
 #         path_to_audio = np.concatenate(path_to_audio, np.zeros())
         # 661500 = 15 * 44100. 15초 짜리 오디오를 44.1KHz의 SR로 샘플링 했을 때 생성되는 데이터의 개수

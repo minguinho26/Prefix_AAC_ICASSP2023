@@ -1,0 +1,22 @@
+# =================================
+# Main settings for the DCASE 2020
+# challenge baseline system.
+#
+# author: Konstantinos Drossos
+# affiliation: Tampere University
+# =================================
+workflow:
+  dataset_creation: Yes
+  dnn_training: Yes
+  dnn_evaluation: Yes
+  dnn_testing: No
+
+# ---------------------------------
+dataset_creation_settings: !include dataset_creation.yaml
+# -----------------------------------
+feature_extraction_settings: !include feature_extraction.yaml
+# -----------------------------------
+dnn_training_settings: !include method_baseline.yaml
+# -----------------------------------
+dirs_and_files: !include dirs_and_files.yaml
+# EOF

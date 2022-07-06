@@ -1,0 +1,20 @@
+# =================================
+# Settings for the model.
+#
+# author: Konstantinos Drossos
+# affiliation: Tampere University
+# =================================
+use_pre_trained_model: No
+# -----------------------------------
+encoder:
+  input_dim_encoder: 64
+  hidden_dim_encoder: 256
+  output_dim_encoder: 256
+  dropout_p_encoder: .25
+# -----------------------------------
+decoder:
+  output_dim_h_decoder: 256
+  nb_classes:  # Empty, to be filled automatically.
+  dropout_p_decoder: .25
+  max_out_t_steps: 22
+# EOF
