@@ -27,6 +27,12 @@ data/ <br>
 
 그러면 clotho dataset 'class' 가 사용하는 데이터가 생성됩니다.
 
+### Pre_trained network 사용
+사전학습된 AudioCLIP의 audio encoder를 사용하려면 .pt파일이 필요합니다. [해당 경로](https://github.com/AndreyGuzhov/AudioCLIP/releases)에서 AudioCLIP-Partial-Training.pt를 다운받으신 뒤 ACLIP/model 경로에 넣어줍니다.
+
+![스크린샷 2022-07-06 오후 10 30 03(2)](https://user-images.githubusercontent.com/50979281/177561863-b856088b-5da2-4126-a889-e437eb514f6e.png)
+
+
 ### 사용 예
 
 <img width="491" alt="스크린샷 2022-07-06 오후 10 25 31" src="https://user-images.githubusercontent.com/50979281/177560824-392ed8e0-e65a-4c71-8efe-7a1d22cfc964.png">
