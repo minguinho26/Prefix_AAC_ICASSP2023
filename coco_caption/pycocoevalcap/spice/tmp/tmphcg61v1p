@@ -1,0 +1,57 @@
+[
+  {
+    "image_id": 0,
+    "test": "a radio is being turned on and off.a radio is being turned on and off.a radio is being turned on and off.a radio is being turned on and off.a radio is being turned on and off.a car is being driven by a truck and a truck is passing by.a car is being driven by a truck and a truck is passing by.a car is being driven by a truck and a truck is passing by.a car is being driven by a truck and a truck is passing by.a car is being driven by a truck and a truck is passing by.a person is chopping wood and then chopping wood again",
+    "refs": [
+      "a hard object strikes the ground that is covered with twigs and leaves",
+      "a hard object strikes the ground that is covered with twigs and leaves",
+      "a hard object strikes the ground that is covered with twigs and leaves",
+      "a hard object strikes the ground that is covered with twigs and leaves",
+      "a hard object strikes the ground that is covered with twigs and leaves"
+    ]
+  },
+  {
+    "image_id": 1,
+    "test": "a radio is being turned on and off.a radio is being turned on and off.a radio is being turned on and off.a radio is being turned on and off.a radio is being turned on and off.a car is being driven by a truck and a truck is passing by.a car is being driven by a truck and a truck is passing by.a car is being driven by a truck and a truck is passing by.a car is being driven by a truck and a truck is passing by.a car is being driven by a truck and a truck is passing by.a person is chopping wood and then chopping wood again.a person is chopping wood and then chopping wood again.a person is chopping wood and then chopping wood again.a person is chopping wood and then chopping wood again.a person is chopping wood and then chopping wood again.a car is driving along a road and a car is driving away.a car is driving along a road and a car is driving away.a car is driving along a road and a car is driving away.a car is driving along a road and a car is driving away.a car is driving along a road and a car is driving away.a machine is running continuously while a person is talking",
+    "refs": [
+      "a low mechanical hum is pulsating in the distance of a building",
+      "a low mechanical hum is pulsating in the distance of a building",
+      "a low mechanical hum is pulsating in the distance of a building",
+      "a low mechanical hum is pulsating in the distance of a building",
+      "a low mechanical hum is pulsating in the distance of a building"
+    ]
+  },
+  {
+    "image_id": 2,
+    "test": "a radio is being turned on and off.a radio is being turned on and off.a radio is being turned on and off.a radio is being turned on and off.a radio is being turned on and off.a car is being driven by a truck and a truck is passing by.a car is being driven by a truck and a truck is passing by.a car is being driven by a truck and a truck is passing by.a car is being driven by a truck and a truck is passing by.a car is being driven by a truck and a truck is passing by.a person is chopping wood and then chopping wood again.a person is chopping wood and then chopping wood again.a person is chopping wood and then chopping wood again.a person is chopping wood and then chopping wood again.a person is chopping wood and then chopping wood again.a car is driving along a road and a car is driving away",
+    "refs": [
+      "a grass cutter is started then slows before it is shut off",
+      "a grass cutter is started then slows before it is shut off",
+      "a grass cutter is started then slows before it is shut off",
+      "a grass cutter is started then slows before it is shut off",
+      "a grass cutter is started then slows before it is shut off"
+    ]
+  },
+  {
+    "image_id": 3,
+    "test": "a radio is being turned on and off.a radio is being turned on and off.a radio is being turned on and off.a radio is being turned on and off.a radio is being turned on and off.a car is being driven by a truck and a truck is passing by",
+    "refs": [
+      "a motor bike is riding around the neighborhood",
+      "a motor bike is riding around the neighborhood",
+      "a motor bike is riding around the neighborhood",
+      "a motor bike is riding around the neighborhood",
+      "a motor bike is riding around the neighborhood"
+    ]
+  },
+  {
+    "image_id": 4,
+    "test": "a radio is being turned on and off",
+    "refs": [
+      "a buzzing grinding noise occurs followed with static",
+      "a buzzing grinding noise occurs followed with static",
+      "a buzzing grinding noise occurs followed with static",
+      "a buzzing grinding noise occurs followed with static",
+      "a buzzing grinding noise occurs followed with static"
+    ]
+  }
+]

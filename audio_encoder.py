@@ -1,8 +1,28 @@
 #AudioCLIP
-from AudioCLIP.model import *
+from esresnet.fbsp import *
+import torch
 
-def get_audio_encoder(AudioCLIP_pretrained_path = "./AudioCLIP/model/AudioCLIP-Full-Training.pt") :
-    aclip = AudioCLIP(pretrained=AudioCLIP_pretrained_path) # 학습된 AudioCLIP
-    audio_encoder_in_AudioCLIP = aclip.get_audioclip()  
+class Audio_Encoder(ESResNeXtFBSP) :
+    def __init__(self):
 
-    return audio_encoder_in_AudioCLIP
+        super(Audio_Encoder, self).__init__(
+            n_fft=2048,
+            hop_length=561,
+            win_length=1654,
+            window='blackmanharris',
+            normalized=True,
+            onesided=True,
+            spec_height=-1,
+            spec_width=-1,
+            num_classes=1024,
+            apply_attention=True,
+            pretrained=False
+        )
+
+def get_audio_encoder(pretrained_path = "./esresnet/pre_trained_params.pt") :
+    
+    audio_encoder = Audio_Encoder()
+    
+    audio_encoder.load_state_dict(torch.load(pretrained_path))
+    
+    return audio_encoder

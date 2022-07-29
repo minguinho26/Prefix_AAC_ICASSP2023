@@ -312,9 +312,17 @@ class ClipCap_AAC(nn.Module):
         elif mapping_type == 'TRANSFORMER':
             self.clip_project = TransformerMapper(prefix_size, self.gpt_embedding_size, prefix_length,
                                                                      clip_length, num_layers)
+        
         if encoder_freeze == True :
             for param in self.audio_encoder.parameters():
                 param.requires_grad = False
+        else :
+            # fbsp만 Trainable하게 만든다. 나머지 부분(Feature Extraction 등은 Freezing)
+            for param in self.audio_encoder.parameters():
+                param.requires_grad = False
+            for param in self.audio_encoder.fbsp.parameters():
+                param.requires_grad = True
+        
         if decoder_freeze == True :
             for param in self.gpt.parameters():
                 param.requires_grad = False
@@ -336,5 +344,6 @@ def get_ClipCap_AAC_adopt_contrastive_loss(audioenc_param_path, tokenizer, mappi
     model = ClipCap_AAC(audio_encoder, tokenizer, encoder_freeze, decoder_freeze, mapping_type = mapping_type)
     
     return model
+
 
 

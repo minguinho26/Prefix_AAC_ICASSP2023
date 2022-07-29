@@ -11,7 +11,7 @@ class AudioCaps_Dataset(Dataset):
     def __init__(self, data_dir, tokenizer, split) :  # split = 'train' or 'test'
         super(AudioCaps_Dataset, self).__init__()
         
-        self.SAMPLE_RATE = 32000 # 새로 받은 AudioCaps는 32kHz다. 그래서 변경함
+        self.SAMPLE_RATE = 16000
         
         # data_dir 은 dataset폴더겠지?
         # dataset폴더 안에 train, test폴더 만들고 각 폴더에 .wav랑 .csv를 넣어야겠다 
@@ -105,4 +105,5 @@ def dataloader_AudioCapsDataset(data_dir, batch_size, tokenizer, split, is_Train
                       drop_last=is_drop_last)
     
     return dataloader
+
 
