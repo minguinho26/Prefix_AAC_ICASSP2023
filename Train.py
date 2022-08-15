@@ -1,4 +1,4 @@
-from transformers import AdamW, get_linear_schedule_with_warmup
+from transformers import AdamW, get_cosine_schedule_with_warmup
 from tqdm import tqdm
 
 import torch
@@ -14,21 +14,25 @@ import pickle
 
 device = 'cuda'
 
-def Train(model, train_dataloader, test_dataloader, tokenizer,  epochs, model_name, beam_search) :
+def Train(model, LR, train_dataloader, test_dataloader, tokenizer,  epochs, model_name, beam_search) :
     
     model.train()
     model.to(device)
     
     warmup_steps = int((epochs * len(train_dataloader)) /6) # 총 weight update 횟수의 1/6은 warm-up 시기임
     
-    optimizer = AdamW(model.parameters(), lr=2e-5)
-    scheduler = get_linear_schedule_with_warmup(
+    optimizer = AdamW(model.parameters(), lr=LR, weight_decay = 0.01)
+    
+    # scheduler 변경(22/8/5, 8차 실험)
+    scheduler = get_cosine_schedule_with_warmup(
         optimizer, num_warmup_steps=warmup_steps, num_training_steps=epochs * len(train_dataloader))
     
     min_loss = float("Inf")
     min_loss_file_path = ''
     
     epoch_eval_interval = int(epochs/3)
+    
+    prefix_length = model.audio_prefix_length + model.semantic_prefix_length
     
     for epoch in range(epochs) :
         pbar = tqdm(train_dataloader, desc=f"Training Epoch {epoch}")
@@ -39,8 +43,8 @@ def Train(model, train_dataloader, test_dataloader, tokenizer,  epochs, model_na
             tokens = tokens.to(device)
             mask = mask.to(device)
             
-            outputs = model(audio, tokens, mask)
-            logits = outputs.logits[:, model.prefix_length - 1: -1]
+            logits = model(audio, tokens, mask)[:, prefix_length - 1: -1]
+            
             loss = nnf.cross_entropy(logits.reshape(-1, logits.shape[-1]).to(device), tokens.flatten().to(device), ignore_index=0)
             avr_loss_per_epoch += loss.item()
             loss.backward()
@@ -53,6 +57,10 @@ def Train(model, train_dataloader, test_dataloader, tokenizer,  epochs, model_na
         if (epoch == epoch_eval_interval - 1) or (epoch == (2 * epoch_eval_interval) - 1) or (epoch == (epochs - 1)) :
             eval_model(model, test_dataloader, tokenizer, epoch, model_name, beam_search)
             model.train()
+            # 학습의 1/3 지점 이후에는 Encoder를 Freezing 시켜보기
+            if (epoch == epoch_eval_interval - 1) :
+                for param in model.audio_encoder.parameters():
+                    param.requires_grad = False
 
         avr_loss_per_epoch /= len(train_dataloader)
         
@@ -90,7 +98,7 @@ def eval_model(model, test_dataloader, tokenizer, epoch, model_name, beam_search
             
             if beam_search == True :
                 generated_list = []
-                text_list = model(audio, None, None, beam_search = beam_search)
+                text_list = model(audio, None, beam_search = beam_search)
                 
                 for j in range(len(text_list)):
                     generated_list.append(text_list[j][0])  
@@ -102,16 +110,11 @@ def eval_model(model, test_dataloader, tokenizer, epoch, model_name, beam_search
             
             index_start_num = 5 * j
            
-            caption_list = [tokenizer.decode(tokens[index_start_num + 0]).strip('!'),
-                            tokenizer.decode(tokens[index_start_num + 1]).strip('!'),
-                            tokenizer.decode(tokens[index_start_num + 2]).strip('!'),
-                            tokenizer.decode(tokens[index_start_num + 3]).strip('!'),
-                            tokenizer.decode(tokens[index_start_num + 4]).strip('!')]
-            
-            
-            for k in range(len(caption_list)) :
-                if caption_list[k][-1] != '.' :
-                    caption_list[k] += '.'
+            caption_list = [tokenizer.decode(tokens[index_start_num + 0]).replace('!',''),
+                            tokenizer.decode(tokens[index_start_num + 1]).replace('!',''),
+                            tokenizer.decode(tokens[index_start_num + 2]).replace('!',''),
+                            tokenizer.decode(tokens[index_start_num + 3]).replace('!',''),
+                            tokenizer.decode(tokens[index_start_num + 4]).replace('!','')]
             
             captions_pred.append({
                         'file_name': f_names[index_start_num], 
