@@ -22,7 +22,7 @@ Model_name = sys.argv[1]
 
 tokenizer = tokenizer_AudioCaps(vocab_size)
 
-TEST_BATCH_SIZE = 25
+TEST_BATCH_SIZE = 5
 
 # PANNs를 써먹기 위해 prefix_size를 수정
 audio_prefix_size = 15

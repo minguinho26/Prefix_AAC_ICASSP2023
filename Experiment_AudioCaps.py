@@ -25,7 +25,7 @@ data_dir = './Dataset'
 # 220812 다시 회귀 시도
 tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 
-TEST_BATCH_SIZE = 25
+TEST_BATCH_SIZE = 5
 
 # PANNs를 써먹기 위해 prefix_size를 수정
 audio_prefix_size = 15

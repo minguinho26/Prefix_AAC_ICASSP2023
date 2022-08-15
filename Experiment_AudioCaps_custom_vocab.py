@@ -21,7 +21,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 data_dir = './Dataset'
 
-TEST_BATCH_SIZE = 25
+TEST_BATCH_SIZE = 5
 TRAIN_BATCH_SIZE = 73
 epochs = 50
 LR = 5e-5

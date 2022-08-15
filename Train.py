@@ -86,15 +86,10 @@ def eval_model(model, test_dataloader, tokenizer, epoch, model_name, beam_search
             # 하나의 raw audio에 대해 5개의 caption이 등장
             
             # Test dataset은 audio, caption의 비율이 1:5다 
-            # audio를 뽑고 5개당 하나씩 sampling하자
+            # Batch size를 5로 설정했음. 0번 인덱스 값만 사용할거임
             audio = audio.to(device)
             
-            index_list = []
-            for i in range(int(audio.size()[0] / 5)) :
-                index_list.append(5 * i)
-            index_list = torch.tensor(index_list)
-            
-            audio = audio[index_list,:]
+            audio = audio[0,:].unsqueeze(0)
             
             if beam_search == True :
                 generated_list = []
@@ -104,23 +99,18 @@ def eval_model(model, test_dataloader, tokenizer, epoch, model_name, beam_search
                     generated_list.append(text_list[j][0])  
             else :
                 generated_list = model(audio, None, None, beam_search = beam_search)
-                
-        
-        for j in range(int(audio.size()[0] / 5)) :
-            
-            index_start_num = 5 * j
            
-            caption_list = [tokenizer.decode(tokens[index_start_num + 0]).replace('!',''),
-                            tokenizer.decode(tokens[index_start_num + 1]).replace('!',''),
-                            tokenizer.decode(tokens[index_start_num + 2]).replace('!',''),
-                            tokenizer.decode(tokens[index_start_num + 3]).replace('!',''),
-                            tokenizer.decode(tokens[index_start_num + 4]).replace('!','')]
+        caption_list = [tokenizer.decode(tokens[0]).replace('!',''),
+                            tokenizer.decode(tokens[1]).replace('!',''),
+                            tokenizer.decode(tokens[2]).replace('!',''),
+                            tokenizer.decode(tokens[3]).replace('!',''),
+                            tokenizer.decode(tokens[4]).replace('!','')]
             
-            captions_pred.append({
-                        'file_name': f_names[index_start_num], 
-                        'caption_predicted': generated_list[j]})
-            captions_gt.append({
-                        'file_name': f_names[index_start_num],
+        captions_pred.append({
+                        'file_name': f_names[0], 
+                        'caption_predicted': text_list[0][0]})
+        captions_gt.append({
+                        'file_name': f_names[0],
                         'caption_1': caption_list[0],
                         'caption_2': caption_list[1],
                         'caption_3': caption_list[2],
