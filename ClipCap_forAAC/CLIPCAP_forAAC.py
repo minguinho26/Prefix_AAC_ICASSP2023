@@ -325,14 +325,14 @@ class ClipCap_AAC(nn.Module):
                 param.requires_grad = False
         
         if pretrain_fromAudioCaps == True :
-            checkpoint_path = "./ClipCap_forAAC/audio_clip_project_SOTA_in_Audiocaps.pt"
+            checkpoint_path = "./ClipCap_forAAC/pre_trained_params_from_audiocaps/audio_clip_project_SOTA_in_Audiocaps.pt"
             self.audio_clip_project.load_state_dict(torch.load(checkpoint_path))
             
-            checkpoint_path = "./ClipCap_forAAC/semantic_clip_project_SOTA_in_Audiocaps.pt"
+            checkpoint_path = "./ClipCap_forAAC/pre_trained_params_from_audiocaps/semantic_clip_project_SOTA_in_Audiocaps.pt"
             self.semantic_clip_project.load_state_dict(torch.load(checkpoint_path))
             
             if vocab_size == None : # GPT2 tokenizer를 사용할 경우, huggingface에서 제공하는 header를 사용
-                checkpoint_path = './ClipCap_forAAC/PreTrained_Header_fromAudioCaps.pt'
+                checkpoint_path = './ClipCap_forAAC/pre_trained_params_from_audiocaps/PreTrained_Header_fromAudioCaps.pt'
                 self.language_header.load_state_dict(torch.load(checkpoint_path))
         else :
             if vocab_size == None : # GPT2 tokenizer를 사용할 경우, huggingface에서 제공하는 header를 사용

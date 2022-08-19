@@ -23,7 +23,6 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
     
     optimizer = AdamW(model.parameters(), lr=LR, weight_decay = 0.01)
     
-    # scheduler 변경(22/8/5, 8차 실험)
     scheduler = get_cosine_schedule_with_warmup(
         optimizer, num_warmup_steps=warmup_steps, num_training_steps=epochs * len(train_dataloader))
     
@@ -33,23 +32,45 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
     
     for epoch in range(epochs) :
         pbar = tqdm(train_dataloader, desc=f"Training Epoch {epoch}")
-        avr_loss_per_epoch = 0.0
+        total_loss_per_epopch = 0.0
+        loss_add_count = 0.0
         for batch_i, (audio, tokens, mask, file_name) in enumerate(pbar) :
             
             audio = audio.to(device)
             tokens = tokens.to(device)
             mask = mask.to(device)
             
-            logits = model(audio, tokens, mask)[:, prefix_length - 1: -1]
+            if Dataset == 'Clotho' :
+                for i in range(5) :
+                    temp_tokens = tokens[:,i, :] # [16, 1, 22]
+                    temp_tokens = temp_tokens.squeeze(1) # [16, 1, 22] -> [16, 22]
+                    
+                    temp_mask = mask[:,i, :] # [16, 1, -1]
+                    temp_mask = temp_mask.squeeze(1) # [16, 1, -1] -> [16, -1]
+                    
+                    logits = model(audio, temp_tokens, temp_mask)[:, prefix_length - 1: -1]
+
+                    loss = nnf.cross_entropy(logits.reshape(-1, logits.shape[-1]).to(device), temp_tokens.flatten().to(device), ignore_index=0)
+                    total_loss_per_epopch += loss.item()
+                    loss_add_count += 1.0
+                    loss.backward()
+                    optimizer.step()
+                    optimizer.zero_grad()
+                
+            elif Dataset == 'AudioCaps' :
+                logits = model(audio, tokens, mask)[:, prefix_length - 1: -1]
             
-            loss = nnf.cross_entropy(logits.reshape(-1, logits.shape[-1]).to(device), tokens.flatten().to(device), ignore_index=0)
-            avr_loss_per_epoch += loss.item()
-            loss.backward()
-            optimizer.step()
+                loss = nnf.cross_entropy(logits.reshape(-1, logits.shape[-1]).to(device), tokens.flatten().to(device), ignore_index=0)
+                total_loss_per_epopch += loss.item()
+                loss_add_count += 1.0
+                loss.backward()
+                optimizer.step()
+                optimizer.zero_grad()
+                
             scheduler.step()
-            optimizer.zero_grad()
             
-            pbar.set_description(f"Training Epoch {epoch}, Loss = {round(loss.item(), 5)}")
+            avr_loss = total_loss_per_epopch / loss_add_count
+            pbar.set_description(f"Training Epoch {epoch}, Loss = {round(avr_loss, 5)}")
             
         if (epoch == epoch_eval_interval - 1) or (epoch == (2 * epoch_eval_interval) - 1) or (epoch == (epochs - 1)) :
             
@@ -60,8 +81,6 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
                 for param in model.audio_encoder.parameters():
                     param.requires_grad = False
 
-        avr_loss_per_epoch /= len(train_dataloader)
-        
         param_file_path = "./params_" + model_name + "/Param_epoch_" + str(epoch) + ".pt"
         torch.save(model.state_dict(), param_file_path)
 

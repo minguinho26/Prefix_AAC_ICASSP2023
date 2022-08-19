@@ -12,14 +12,9 @@ AudioCaps, Clotho 각 데이터셋 별로 실험에 사용했던 코드를 정�
 gdown https://drive.google.com/file/d/1O-rPXe_anLArvRG4Z3-nLdBYNO_JaFYL/view?usp=sharing --fuzzy
 
 ```
-3. **ClipCap_forAAC/esresnet** 폴더로 이동합니다.
-4. 아래 명령어를 입력합니다
 ```
-gdown https://drive.google.com/file/d/1LMaEWhYT6n4-Xuacy0CPJd_Vzc-Uhywc/view?usp=sharing --fuzzy
-
-```
-5. **ClipCap_forAAC** 폴더로 이동합니다.
-6. 아래 명령어를 입력합니다.
+3. **ClipCap_forAAC** 폴더로 이동합니다.
+4. 아래 명령어를 입력합니다.
 ```
 gdown https://drive.google.com/file/d/1H2MdXHu3P_ZQv6mXNvdnvz0PWJH7Lxht/view?usp=sharing --fuzzy
 
