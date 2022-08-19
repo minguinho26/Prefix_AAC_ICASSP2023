@@ -59,17 +59,28 @@ gdown https://drive.google.com/file/d/1RK-qCJ5UM9sPl5Nh4PCrq3n8GLl1qXmW/view?usp
 
 # 학습 방법 
 
-Experiment~.py 혹은 Experiment~_custom_vocab.py에서 학습세팅을 마치신 후 터미널에서 python3 Experiment~.py 꼴의 명령어를 입력하면 학습이 실행됩니다. 
+Experiment~.py를 다음과 같이 실행하면 됩니다. 
+```
+# GPT2 Tokenizer를 사용하는 경우
+python3 Experiment_AudioCaps.py <실험명>
+python3 Experiment_Clotho.py <실험명>
+
+# custom Tokenizer를 사용하는 경우
+python3 Experiment_AudioCaps.py <실험명> <vocabulary의 크기>
+python3 Experiment_Clotho.py <실험명> <vocabulary의 크기>
+```
 
 # 평가 방법
 
 학습을 수행했다고 가정하겠습니다. 
 
-Evaluation~.py 혹은 Evaluation~_custom_vocab.py를 다음과 같이 실행하면 됩니다. 
+Evaluation~.py를 다음과 같이 실행하면 됩니다. 
 ```
 # GPT2 Tokenizer를 사용하는 경우
-python3 Evauation_AudioCaps.py <모델명> <몇 번째 epoch에서 학습시켰는지>
+python3 Evaluation_AudioCaps.py <모델명> <몇 번째 epoch에서 학습시켰는지>
+python3 Evaluation_Clotho.py <모델명> <몇 번째 epoch에서 학습시켰는지>
 
 # custom Tokenizer를 사용하는 경우
-python3 Evauation_AudioCaps_custom_vocab.py <모델명> <몇 번째 epoch에서 학습시켰는지> <vocabulary의 크기>
+python3 Evaluation_AudioCaps.py <모델명> <몇 번째 epoch에서 학습시켰는지> <vocabulary의 크기>
+python3 Evaluation_Clotho.py <모델명> <몇 번째 epoch에서 학습시켰는지> <vocabulary의 크기>
 ```

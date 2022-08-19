@@ -276,10 +276,11 @@ class ClipCap_AAC(nn.Module):
             
 
     def __init__(self, audio_encoder, tokenizer, encoder_freeze = True, decoder_freeze = True, 
+                 vocab_size = None,
                  prefix_size_dict = {"audio_prefix_size" : 10, "semantic_prefix_size" : 10}, 
                  audio_prefix_size = 2048, semantic_prefix_size = 1024, 
                  audio_num_layers = 2, semantic_num_layers = 2,
-                 mapping_type = 'MLP', pretrain_fromAudioCaps = False, PreTrained_Header = False):
+                 mapping_type = 'MLP', pretrain_fromAudioCaps = False):
         
         super(ClipCap_AAC, self).__init__()
         self.device = 'cuda'
@@ -294,9 +295,11 @@ class ClipCap_AAC(nn.Module):
         self.audio_encoder = audio_encoder
         self.gpt = GPT2Model.from_pretrained("gpt2")
         
-        self.language_header = nn.Linear(768, 50257, bias=False) # 50257 : GPT2에서 쓰던 vocab의 사이즈
-        self.language_header.load_state_dict(torch.load('./ClipCap_forAAC/PreTrained_Header_fromAudioCaps.pt')) # Huggingface에서 사전학습된 header
-        
+        if vocab_size == None :
+            self.language_header = nn.Linear(768, 50257, bias=False) # 50257 : GPT2에서 쓰던 vocab의 사이즈
+        else :
+            self.language_header = nn.Linear(768, vocab_size, bias=False) # vocab_size : custom vocabulary의 사이즈
+
         self.gpt_embedding_size = self.gpt.wte.weight.shape[1] # 768
         
         if mapping_type == 'MLP':
@@ -327,12 +330,17 @@ class ClipCap_AAC(nn.Module):
             
             checkpoint_path = "./ClipCap_forAAC/semantic_clip_project_SOTA_in_Audiocaps.pt"
             self.semantic_clip_project.load_state_dict(torch.load(checkpoint_path))
-
-            checkpoint_path = './ClipCap_forAAC/PreTrained_Header_fromAudioCaps.pt'
-            self.language_header.load_state_dict(torch.load(checkpoint_path))
+            
+            if vocab_size == None : # GPT2 tokenizer를 사용할 경우, huggingface에서 제공하는 header를 사용
+                checkpoint_path = './ClipCap_forAAC/PreTrained_Header_fromAudioCaps.pt'
+                self.language_header.load_state_dict(torch.load(checkpoint_path))
+        else :
+            if vocab_size == None : # GPT2 tokenizer를 사용할 경우, huggingface에서 제공하는 header를 사용
+                header_gpt2_header_params = './ClipCap_forAAC/PreTrained_GPT2Header.pt'
+                self.language_header.load_state_dict(torch.load(header_gpt2_header_params)) # Huggingface에서 사전학습된 header
             
                 
-def get_ClipCap_AAC(tokenizer, mapping_type = 'MLP', 
+def get_ClipCap_AAC(tokenizer, vocab_size = None, mapping_type = 'MLP', Dataset = 'AudioCaps',
                     prefix_size_dict = {"audio_prefix_size" : 10, "semantic_prefix_size" : 10}, 
                     transformer_num_layers = None, encoder_freeze = True, decoder_freeze = True, 
                     pretrain_fromAudioCaps = False) :
@@ -351,13 +359,17 @@ def get_ClipCap_AAC(tokenizer, mapping_type = 'MLP',
         checkpoint_path = "./ClipCap_forAAC/audio_encoder_SOTA_in_Audiocaps.pt"
         audio_encoder.load_state_dict(torch.load(checkpoint_path))
     
-    audio_encoder.add_compress_feature()
+    # Clotho는 30초짜리 audio를 쓰는데 ours는 10초짜리 오디오만 처리함. 그래서 30초짜리 audio로 뽑은 값을 10초짜리 오디오로 뽑은 값과 같이 압축시켜주는 module이 필요함
+    # 그러한 module을 추가해주는 method가 add_compress_feature()임
+    if Dataset == 'Clotho' :
+        audio_encoder.add_compress_feature()
     
     audio_num_layers = transformer_num_layers["audio_num_layers"]
     semantic_num_layers = transformer_num_layers["semantic_num_layers"]
 
     model = ClipCap_AAC(audio_encoder, tokenizer, 
                         encoder_freeze, decoder_freeze, 
+                        vocab_size, 
                         prefix_size_dict = prefix_size_dict, 
                         audio_num_layers = audio_num_layers, semantic_num_layers = semantic_num_layers, 
                         mapping_type = mapping_type, pretrain_fromAudioCaps = pretrain_fromAudioCaps)

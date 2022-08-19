@@ -1,7 +1,6 @@
 import torch
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
-from transformers import GPT2Tokenizer
 import pandas as pd
 import torchaudio
 import os
@@ -10,11 +9,88 @@ from tqdm import tqdm
 import pickle
 import re
 
-class ClothoDataset(Dataset):
-    def __init__(self, data_dir, split, prefix_size) :  # split = 'development' or 'evaluation'
-        super(ClothoDataset, self).__init__()
+# Clotho에 등장하는 단어들을 가지고 만든 Dictionary를 이용해 token으로 만들어줌
+class tokenizer_Clotho() :
+    
+    def encode(self, sentence) :
         
-        tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+        # 마침표 제거
+        sentence = re.sub(r'[.]', '', sentence) 
+
+        # 쉼표 오류 제거
+        sentence = sentence.replace(',', ' , ') 
+
+        # 공백 줄이기
+        sentence = re.sub(' +', ' ', sentence)
+
+        sentence = sentence.replace(' ,', ',')
+
+        # caption의 마지막이 쉼표일 경우 제거
+        if sentence[-1] == ',' :
+            sentence = sentence[:-1]
+
+        sentence = sentence.strip()
+        
+        if self.vocab_size == 7983 :
+            sentence += '.'
+        
+        word_list = sentence.split(' ')
+        
+        token_idx = []
+        for word in word_list : 
+            temp_word = word.lower()
+            if self.vocab_size == 4383 and temp_word[-1] == ',' :
+                temp_word_wo_rest = temp_word[:-1]
+                token_idx.append(self.vocab.index(temp_word_wo_rest))
+                token_idx.append(self.vocab.index(','))
+            else :
+                token_idx.append(self.vocab.index(temp_word))
+
+        # 만약 마침표가 반영된 vocab이면 '.' 토큰도 추가
+        if self.vocab_size == 5737 :
+            token_idx.append(self.vocab.index('.'))
+            
+        # 마지막에 <eos> 추가
+        token_idx.append(13)
+        
+        return token_idx
+    
+    def decode(self, token_idx) :
+        
+        sentence = ''
+        for idx in token_idx :
+            if (idx == 13) :
+                break
+            else :
+                if (self.vocab[idx] == '.') or (self.vocab[idx] == ',') :
+                    sentence = sentence[:-1] # 마침표나 쉼표는 공백 제거 후 붙여줘야함
+                
+                sentence += self.vocab[idx] + ' '
+        
+        sentence = sentence.rstrip() # 우측 공백 제거
+        
+        return sentence.capitalize() # 앞글자를 대문자로 만들어줌
+
+    def __init__(self, vocab_size) :
+        
+        file_path = ''
+        self.vocab_size = vocab_size
+        
+        if vocab_size == 4383 :
+            file_path = './Clotho/Clotho_vocabulary_lower_case_import_rest_len_4383.pickle'
+        elif vocab_size == 5737 :
+            file_path = './Clotho/Clotho_vocabulary_lower_case_import_stopword_len_5737.pickle'
+        elif vocab_size == 5736 :
+            file_path = './Clotho/Clotho_vocabulary_lower_remove_stopword_len_5736.pickle'
+        elif vocab_size == 7983 :
+            file_path = './Clotho/Clotho_vocabulary_lower_len_7983.pickle'
+        
+        with open(file_path, 'rb') as f :
+            self.vocab = pickle.load(f) 
+
+class ClothoDataset(Dataset):
+    def __init__(self, tokenizer, data_dir, split, prefix_size) :  # split = 'development' or 'evaluation'
+        super(ClothoDataset, self).__init__()
         
         self.SAMPLE_RATE = 44100
         
@@ -138,9 +214,9 @@ class ClothoDataset(Dataset):
         return audio_file, tokens.type(torch.int64), mask.type(torch.int64), self.audio_name_list[item]
     
 
-def dataloader_ClothoDataset(data_dir, batch_size, split, prefix_size, is_TrainDataset = False) :
+def dataloader_ClothoDataset(tokenizer, data_dir, batch_size, split, prefix_size, is_TrainDataset = False) :
     
-    dataset = ClothoDataset(data_dir, split, prefix_size)
+    dataset = ClothoDataset(tokenizer, data_dir, split, prefix_size)
     
     if is_TrainDataset == True :
         is_shuffle = True

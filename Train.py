@@ -14,7 +14,7 @@ import pickle
 
 device = 'cuda'
 
-def Train(model, LR, train_dataloader, test_dataloader, tokenizer,  epochs, model_name, beam_search) :
+def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model_name, beam_search, Dataset = 'AudioCaps') :
     
     model.train()
     model.to(device)
@@ -26,9 +26,6 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer,  epochs, mode
     # scheduler 변경(22/8/5, 8차 실험)
     scheduler = get_cosine_schedule_with_warmup(
         optimizer, num_warmup_steps=warmup_steps, num_training_steps=epochs * len(train_dataloader))
-    
-    min_loss = float("Inf")
-    min_loss_file_path = ''
     
     epoch_eval_interval = int(epochs/3)
     
@@ -55,7 +52,8 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer,  epochs, mode
             pbar.set_description(f"Training Epoch {epoch}, Loss = {round(loss.item(), 5)}")
             
         if (epoch == epoch_eval_interval - 1) or (epoch == (2 * epoch_eval_interval) - 1) or (epoch == (epochs - 1)) :
-            eval_model(model, test_dataloader, tokenizer, epoch, model_name, beam_search)
+            
+            eval_model(model, test_dataloader, tokenizer, epoch, model_name, beam_search, Dataset = Dataset)
             model.train()
             # 학습의 1/3 지점 이후에는 Encoder를 Freezing 시켜보기
             if (epoch == epoch_eval_interval - 1) :
@@ -66,61 +64,13 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer,  epochs, mode
         
         param_file_path = "./params_" + model_name + "/Param_epoch_" + str(epoch) + ".pt"
         torch.save(model.state_dict(), param_file_path)
-        
-        if min_loss > avr_loss_per_epoch :
-            min_loss = avr_loss_per_epoch
-            min_loss_file_path = param_file_path
-    
-    return min_loss_file_path
 
-def eval_model(model, test_dataloader, tokenizer, epoch, model_name, beam_search) :
-    model.eval()
-    model.to(device)
-
-    # 모아놨다가 한 번에 평가하자
-    captions_pred: List[Dict] = []
-    captions_gt: List[Dict] = []
+def eval_model(model, test_dataloader, tokenizer, epoch, model_name, beam_search, Dataset = 'AudioCaps') :
+    if Dataset == 'AudioCaps' :
+        metrics = eval_model_audiocaps(model, test_dataloader, tokenizer, epoch, model_name, beam_search)
+    elif Dataset == 'Clotho' :
+        metrics = eval_model_clotho(model, test_dataloader, tokenizer, epoch, model_name, beam_search)
     
-    for i, (audio, tokens, mask, f_names) in enumerate(tqdm(test_dataloader, desc="Eval...")):
-        with torch.no_grad():
-            # 하나의 raw audio에 대해 5개의 caption이 등장
-            
-            # Test dataset은 audio, caption의 비율이 1:5다 
-            # Batch size를 5로 설정했음. 0번 인덱스 값만 사용할거임
-            audio = audio.to(device)
-            
-            audio = audio[0,:].unsqueeze(0)
-            
-            if beam_search == True :
-                generated_list = []
-                text_list = model(audio, None, beam_search = beam_search)
-                
-                for j in range(len(text_list)):
-                    generated_list.append(text_list[j][0])  
-            else :
-                generated_list = model(audio, None, None, beam_search = beam_search)
-           
-        caption_list = [tokenizer.decode(tokens[0]).replace('!',''),
-                            tokenizer.decode(tokens[1]).replace('!',''),
-                            tokenizer.decode(tokens[2]).replace('!',''),
-                            tokenizer.decode(tokens[3]).replace('!',''),
-                            tokenizer.decode(tokens[4]).replace('!','')]
-            
-        captions_pred.append({
-                        'file_name': f_names[0], 
-                        'caption_predicted': text_list[0][0]})
-        captions_gt.append({
-                        'file_name': f_names[0],
-                        'caption_1': caption_list[0],
-                        'caption_2': caption_list[1],
-                        'caption_3': caption_list[2],
-                        'caption_4': caption_list[3],
-                        'caption_5': caption_list[4]})
-    
-    # 전체 측정값을 한 번에 method에 넣어서 측정
-    metrics = evaluate_metrics(captions_pred, captions_gt)
-        
-    #
     total_results = {}
     total_results['BLUE_1'] = metrics['bleu_1']['score']
     total_results['BLUE_2'] = metrics['bleu_2']['score']
@@ -131,15 +81,6 @@ def eval_model(model, test_dataloader, tokenizer, epoch, model_name, beam_search
     total_results['CIDEr'] = metrics['cider']['score']
     total_results['SPICE'] = metrics['spice']['score']
     total_results['SPIDEr'] = metrics['spider']['score']  
-    
-    print("Pred, gt example")
-    print("Pred :", generated_list[-1])
-    print("Caption_1 :", caption_list[0])
-    print("Caption_2 :", caption_list[1])
-    print("Caption_3 :", caption_list[2])
-    print("Caption_4 :", caption_list[3])
-    print("Caption_5 :", caption_list[4])
-    print()
     
     print("total result")
     print(AsciiTable(
@@ -160,3 +101,101 @@ def eval_model(model, test_dataloader, tokenizer, epoch, model_name, beam_search
     result_file_path = './eval_result/epoch_' + str(epoch) + '_' + model_name + '.pkl' 
     with open(result_file_path,'wb') as f:
         pickle.dump(total_results, f)
+    
+
+def eval_model_audiocaps(model, test_dataloader, tokenizer, epoch, model_name, beam_search) :
+    model.eval()
+    model.to(device)
+
+    # 모아놨다가 한 번에 평가하자
+    captions_pred: List[Dict] = []
+    captions_gt: List[Dict] = []
+    
+    for i, (audio, tokens, mask, f_names) in enumerate(tqdm(test_dataloader, desc="Eval...")):
+        with torch.no_grad():
+            # 하나의 raw audio에 대해 5개의 caption이 등장
+            
+            # Test dataset은 audio, caption의 비율이 1:5다 
+            # Batch size를 5로 설정했음. 0번 인덱스 값만 사용할거임
+            audio = audio.to(device)
+            
+            audio = audio[0,:].unsqueeze(0)
+            
+            if beam_search == True :
+                generated_list = []
+                text_list = model(audio, None, beam_search = True)
+                
+                for j in range(len(text_list)):
+                    generated_list.append(text_list[j][0])  
+            else :
+                generated_list = model(audio, None, beam_search = False)
+           
+        caption_list = [tokenizer.decode(tokens[0]).replace('!',''),
+                            tokenizer.decode(tokens[1]).replace('!',''),
+                            tokenizer.decode(tokens[2]).replace('!',''),
+                            tokenizer.decode(tokens[3]).replace('!',''),
+                            tokenizer.decode(tokens[4]).replace('!','')]
+            
+        captions_pred.append({
+                        'file_name': f_names[0], 
+                        'caption_predicted': text_list[0][0]})
+        captions_gt.append({
+                        'file_name': f_names[0],
+                        'caption_1': caption_list[0],
+                        'caption_2': caption_list[1],
+                        'caption_3': caption_list[2],
+                        'caption_4': caption_list[3],
+                        'caption_5': caption_list[4]})
+    
+    # 전체 측정값을 한 번에 method에 넣어서 측정
+    metrics = evaluate_metrics(captions_pred, captions_gt)
+    
+    return metrics
+
+def eval_model_clotho(model, test_dataloader, tokenizer, epoch, model_name, beam_search) :
+    model.eval()
+    model.to(device)
+
+    # 모아놨다가 한 번에 평가하자
+    captions_pred: List[Dict] = []
+    captions_gt: List[Dict] = []
+    
+    for i, (audio, tokens, mask, f_names) in enumerate(tqdm(test_dataloader, desc="Eval...")):
+        with torch.no_grad():
+            # 하나의 raw audio에 대해 5개의 caption이 등장
+
+            audio = audio.to(device)
+    
+            if beam_search == True :
+                generated_list = []
+                text_list = model(audio, None, beam_search = True)
+                
+                for j in range(len(text_list)):
+                    generated_list.append(text_list[j][0])  
+            else :
+                generated_list = model(audio, None, beam_search = False)
+                
+        # [25, 5, 22] tokens를 가지고 해야함
+        for j in range(tokens.size()[0]) :
+            
+            caption_list = [tokenizer.decode(tokens[j, 0, :]).replace('!',''),
+                            tokenizer.decode(tokens[j, 1, :]).replace('!',''),
+                            tokenizer.decode(tokens[j, 2, :]).replace('!',''),
+                            tokenizer.decode(tokens[j, 3, :]).replace('!',''),
+                            tokenizer.decode(tokens[j, 4, :]).replace('!','')]
+            
+            captions_pred.append({
+                        'file_name': f_names[j], 
+                        'caption_predicted': generated_list[j]})
+            captions_gt.append({
+                        'file_name': f_names[j],
+                        'caption_1': caption_list[0],
+                        'caption_2': caption_list[1],
+                        'caption_3': caption_list[2],
+                        'caption_4': caption_list[3],
+                        'caption_5': caption_list[4]})
+    
+    # 전체 측정값을 한 번에 method에 넣어서 측정
+    metrics = evaluate_metrics(captions_pred, captions_gt)
+
+    return metrics

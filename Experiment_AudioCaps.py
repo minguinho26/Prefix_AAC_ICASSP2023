@@ -1,7 +1,16 @@
- from typing import List, Tuple
+from typing import List, Tuple
 import torch
 import copy
 import os
+import sys
+
+# custom
+from AudioCaps.AudioCaps_Dataset import * # 데이터셋
+from transformers import GPT2Tokenizer
+from ClipCap_forAAC.CLIPCAP_forAAC import * # network
+from Train import *
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning) 
 
 # 폴더 생성 메소드
 def createDirectory(MODEL_NAME):
@@ -12,55 +21,69 @@ def createDirectory(MODEL_NAME):
     except OSError:
         print("Error: Failed to create the directory.")
 
-# custom
-from AudioCaps.AudioCaps_Dataset import * # 데이터셋
-from transformers import GPT2Tokenizer
-from ClipCap_forAAC.CLIPCAP_forAAC import * # network
-from Train import *
-import warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning) 
+def isNumber(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
 
-data_dir = './Dataset'
+argv_num_with_gpt2_tokenizer = 1 + 1
+argv_num_with_custom_tokenizer = 2 + 1
 
-# 220812 다시 회귀 시도
-tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+# <실험명> <vocabulary의 크기> 를 입력한 경우
+if len(sys.argv) == argv_num_with_custom_tokenizer : 
+    if (not isNumber(sys.argv[2])) :
+        print("<vocabulary의 크기>에 대한 값이 숫자가 아닙니다!")
+        exit()
+# 따로 입력한 값이 없을 경우
+elif len(sys.argv) < argv_num_with_gpt2_tokenizer : 
+    print("실험명을 입력해주십시오!")
+    exit()
 
-TEST_BATCH_SIZE = 5
+data_dir = './AudioCaps'
+
+epochs = 50
+LR = 5e-5
 
 # PANNs를 써먹기 위해 prefix_size를 수정
 audio_prefix_size = 15
 semantic_prefix_size = 11
 prefix_size = audio_prefix_size + semantic_prefix_size
 
-test_dataloader  = dataloader_AudioCapsDataset(data_dir, TEST_BATCH_SIZE, split = 'test', prefix_size = prefix_size, is_TrainDataset = False)
+transformer_num_layers = {"audio_num_layers" : 4 , "semantic_num_layers" : 4}
+prefix_size_dict = {"audio_prefix_size" : audio_prefix_size, "semantic_prefix_size" : semantic_prefix_size}
 
+# argv의 개수가 2개다 : custom vocab을 사용했다
+vocab_size = None
 
-# network name 지어주기
-architecture_ver = '2_2_final'
-experiment_num = 2
-case = 2
+if len(sys.argv) == argv_num_with_custom_tokenizer:
+    vocab_size = int(sys.argv[2])
+    tokenizer = tokenizer_AudioCaps(vocab_size)
+# argv의 개수가 1개다 : custom vocab을 사용하지 않았다
+else :
+    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 
+TEST_BATCH_SIZE = 5
+TRAIN_BATCH_SIZE = 73
+test_dataloader  = dataloader_AudioCapsDataset(tokenizer, data_dir, TEST_BATCH_SIZE, split = 'test', prefix_size = prefix_size, is_TrainDataset = False)
+train_dataloader = dataloader_AudioCapsDataset(tokenizer, data_dir, TRAIN_BATCH_SIZE, split = 'train', prefix_size = prefix_size, is_TrainDataset = True)
 
 #============실험================
 torch.cuda.empty_cache()
 
-TRAIN_BATCH_SIZE = 73
-epochs = 50
-LR = 5e-5
-train_dataloader = dataloader_AudioCapsDataset(data_dir, TRAIN_BATCH_SIZE, split = 'train', prefix_size = prefix_size, is_TrainDataset = True )
-MODEL_NAME = 'clipcap_archi_' + architecture_ver + '_experiment_' + str(experiment_num) + '_case_' + str(case)
+MODEL_NAME = sys.argv[1] + '_audiocaps'
 
 createDirectory(MODEL_NAME)
 
-transformer_num_layers = {"audio_num_layers" : 4 , "semantic_num_layers" : 4}
-prefix_size_dict = {"audio_prefix_size" : audio_prefix_size, "semantic_prefix_size" : semantic_prefix_size}
-
-model = get_ClipCap_AAC(tokenizer, mapping_type = 'TRANSFORMER', 
+model = get_ClipCap_AAC(tokenizer, vocab_size = vocab_size, mapping_type = 'TRANSFORMER', Dataset = 'AudioCaps',
                         prefix_size_dict = prefix_size_dict, transformer_num_layers = transformer_num_layers, 
-                        encoder_freeze = False, decoder_freeze = True)
+                        encoder_freeze = False, decoder_freeze = True,
+                        pretrain_fromAudioCaps = False)
 
-
-min_loss_file_path = Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model_name = MODEL_NAME, beam_search = True)
+Train(model, LR, train_dataloader, test_dataloader,
+    tokenizer, epochs, model_name = MODEL_NAME, beam_search = True,
+    Dataset = 'AudioCaps')
 
 torch.cuda.empty_cache()
 #============실험================

@@ -1,7 +1,6 @@
 import torch
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
-from transformers import GPT2Tokenizer
 import pandas as pd
 import torchaudio
 import os
@@ -10,13 +9,84 @@ from tqdm import tqdm
 import pickle
 import re
 
+# vocabulary만들 때 소문자로 변환만 한 경우 사용되는 tokenizer
+class tokenizer_AudioCaps() :
+    
+    def encode(self, sentence) :
+        
+        # 마침표 제거
+        sentence = re.sub(r'[.]', '', sentence) 
+
+        # 쉼표 오류 제거
+        sentence = sentence.replace(',', ' , ') 
+
+        # 공백 줄이기
+        sentence = re.sub(' +', ' ', sentence)
+
+        sentence = sentence.replace(' ,', ',')
+
+        # caption의 마지막이 쉼표일 경우 제거
+        if sentence[-1] == ',' :
+            sentence = sentence[:-1]
+
+        sentence = sentence.strip()
+        word_list = sentence.split(' ')
+        
+        token_idx = []
+        for word in word_list : 
+            temp_word = word.lower()
+            if self.vocab_size == 5217 and temp_word[-1] == ',' :
+                temp_word_wo_rest = temp_word[:-1]
+                token_idx.append(self.vocab.index(temp_word_wo_rest))
+                token_idx.append(self.vocab.index(','))
+            else :
+                token_idx.append(self.vocab.index(temp_word))
+
+        # 만약 마침표가 반영된 vocab이면 '.' 토큰도 추가
+        if self.vocab_size == 6300 :
+            token_idx.append(self.vocab.index('.'))
+            
+        # 마지막에 <eos> 추가
+        token_idx.append(13)
+        
+        return token_idx
+    
+    def decode(self, token_idx) :
+        
+        sentence = ''
+        for idx in token_idx :
+            if (idx == 13) :
+                break
+            else :
+                if (self.vocab[idx] == '.') or (self.vocab[idx] == ',') :
+                    sentence = sentence[:-1] # 마침표나 쉼표는 공백 제거 후 붙여줘야함
+                
+                sentence += self.vocab[idx] + ' '
+        
+        sentence = sentence.rstrip() # 우측 공백 제거
+        
+        return sentence.capitalize() # 앞글자를 대문자로 만들어줌
+
+    def __init__(self, vocab_size) :
+        
+        file_path = ''
+        self.vocab_size = vocab_size
+        
+        if vocab_size == 6299 :
+            file_path = './AudioCaps/AudioCaps_vocabulary_lower_remove_stopword_len_6299.pickle'
+        elif vocab_size == 6300 :
+            file_path = './AudioCaps/AudioCaps_vocabulary_lower_remove_stopword_import_stopword_in_vocab_len_6300.pickle'
+        elif vocab_size == 5217 :
+            file_path = './AudioCaps/AudioCaps_vocabulary_lower_remove_stopword_import_rest_in_vocab_len_5217.pickle'
+        
+        with open(file_path, 'rb') as f:
+            self.vocab = pickle.load(f) 
+
 class AudioCaps_Dataset(Dataset):
-    def __init__(self, data_dir, split, prefix_size) :  # split = 'train' or 'test'
+    def __init__(self, tokenizer, data_dir, split, prefix_size) :  # split = 'train' or 'test'
         super(AudioCaps_Dataset, self).__init__()
         
         self.SAMPLE_RATE = 16000
-        
-        tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
         
         # data_dir 은 dataset폴더겠지?
         # dataset폴더 안에 train, test폴더 만들고 각 폴더에 .wav랑 .csv를 넣어야겠다 
@@ -98,9 +168,9 @@ class AudioCaps_Dataset(Dataset):
         return audio_file, tokens, mask, self.path_list[item]
     
 
-def dataloader_AudioCapsDataset(data_dir, batch_size, split, prefix_size, is_TrainDataset = False) :
+def dataloader_AudioCapsDataset(tokenizer, data_dir, batch_size, split, prefix_size, is_TrainDataset = False) :
     
-    dataset = AudioCaps_Dataset(data_dir, split, prefix_size)
+    dataset = AudioCaps_Dataset(tokenizer, data_dir, split, prefix_size)
     
     if is_TrainDataset == True :
         is_shuffle = True
