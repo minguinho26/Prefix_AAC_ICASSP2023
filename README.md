@@ -29,7 +29,7 @@ gdown https://drive.google.com/file/d/1H2MdXHu3P_ZQv6mXNvdnvz0PWJH7Lxht/view?usp
 1. 터미널 실행 후 **Clotho/clotho_audio_files** 경로로 이동합니다.
 2. 아래 명령어를 입력합니다.
 ```
-gdown https://drive.google.com/file/d/1PncNs70ID_WQWEo-mugpOvm2dqc67ff_/view?usp=sharing --fuzzy
+gdown https://drive.google.com/file/d/1_XGxYhFRVybHear3Ixhd5TVvvV_-r1Zd/view?usp=sharing --fuzzy
 ```
 3. 다운로드 받은 clotho_v1.zip을 압축해제 합니다.
 

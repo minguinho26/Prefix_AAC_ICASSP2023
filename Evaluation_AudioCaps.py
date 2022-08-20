@@ -56,9 +56,12 @@ else :
 TEST_BATCH_SIZE = 5
 test_dataloader  = dataloader_AudioCapsDataset(data_dir, TEST_BATCH_SIZE, split = 'test', prefix_size = prefix_size, is_TrainDataset = False)
 
+USE_CUDA = torch.cuda.is_available() 
+device = torch.device('cuda:0' if USE_CUDA else 'cpu')
+
 model = get_ClipCap_AAC(tokenizer, vocab_size = None, mapping_type = 'TRANSFORMER', Dataset = 'AudioCaps',
                         prefix_size_dict = prefix_size_dict, transformer_num_layers = transformer_num_layers, 
                         encoder_freeze = False, decoder_freeze = True,
-                        pretrain_fromAudioCaps = False)
+                        pretrain_fromAudioCaps = False, device = device)
 model.load_state_dict(torch.load("./params_" + Model_name + "/Param_epoch_" + str(epoch) + ".pt"))
 eval_model_audiocaps(model, test_dataloader, tokenizer, epoch, Model_name, True)

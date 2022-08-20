@@ -12,7 +12,8 @@ from eval_metrics import evaluate_metrics
 from terminaltables import AsciiTable
 import pickle
 
-device = 'cuda'
+USE_CUDA = torch.cuda.is_available() 
+device = torch.device('cuda:0' if USE_CUDA else 'cpu')
 
 def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model_name, beam_search, Dataset = 'AudioCaps') :
     
@@ -81,7 +82,7 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
                 for param in model.audio_encoder.parameters():
                     param.requires_grad = False
 
-        param_file_path = "./params_" + model_name + "/Param_epoch_" + str(epoch) + ".pt"
+        param_file_path = "./Train_record/params_" + model_name + "/Param_epoch_" + str(epoch) + ".pt"
         torch.save(model.state_dict(), param_file_path)
 
 def eval_model(model, test_dataloader, tokenizer, epoch, model_name, beam_search, Dataset = 'AudioCaps') :
@@ -141,13 +142,9 @@ def eval_model_audiocaps(model, test_dataloader, tokenizer, epoch, model_name, b
             audio = audio[0,:].unsqueeze(0)
             
             if beam_search == True :
-                generated_list = []
-                text_list = model(audio, None, beam_search = True)
-                
-                for j in range(len(text_list)):
-                    generated_list.append(text_list[j][0])  
+                pred_caption = model(audio, None, beam_search = True)[0][0]
             else :
-                generated_list = model(audio, None, beam_search = False)
+                pred_caption = model(audio, None, beam_search = False)[0]
            
         caption_list = [tokenizer.decode(tokens[0]).replace('!',''),
                             tokenizer.decode(tokens[1]).replace('!',''),
@@ -157,7 +154,7 @@ def eval_model_audiocaps(model, test_dataloader, tokenizer, epoch, model_name, b
             
         captions_pred.append({
                         'file_name': f_names[0], 
-                        'caption_predicted': text_list[0][0]})
+                        'caption_predicted': pred_caption})
         captions_gt.append({
                         'file_name': f_names[0],
                         'caption_1': caption_list[0],

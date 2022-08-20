@@ -14,7 +14,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 # 폴더 생성 메소드
 def createDirectory(MODEL_NAME):
-    directory = "./params_" + MODEL_NAME
+    directory = "./Train_record/params_" + MODEL_NAME
     try:
         if not os.path.exists(directory):
             os.makedirs(directory)
@@ -76,10 +76,13 @@ MODEL_NAME = sys.argv[1] + '_audiocaps'
 
 createDirectory(MODEL_NAME)
 
+USE_CUDA = torch.cuda.is_available() 
+device = torch.device('cuda:0' if USE_CUDA else 'cpu')
+
 model = get_ClipCap_AAC(tokenizer, vocab_size = vocab_size, mapping_type = 'TRANSFORMER', Dataset = 'AudioCaps',
                         prefix_size_dict = prefix_size_dict, transformer_num_layers = transformer_num_layers, 
                         encoder_freeze = False, decoder_freeze = True,
-                        pretrain_fromAudioCaps = False)
+                        pretrain_fromAudioCaps = False, device = device)
 
 Train(model, LR, train_dataloader, test_dataloader,
     tokenizer, epochs, model_name = MODEL_NAME, beam_search = True,
