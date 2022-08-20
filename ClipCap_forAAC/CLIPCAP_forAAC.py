@@ -271,7 +271,7 @@ class ClipCap_AAC(nn.Module):
             
             logits = self.language_header(out_hidden_states)
             
-            return logits
+            return semantic_feature, logits
         else :
             if beam_search == True :
                 return self.generate_beam(prefix_projections)

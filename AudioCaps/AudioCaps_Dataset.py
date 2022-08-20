@@ -97,7 +97,14 @@ class AudioCaps_Dataset(Dataset):
         # file의 이름이 youtube_id임
         audio_file_list = os.listdir(self.data_dir)
         
+        # audio별 tag에 대한 label 휙득을 위함 
+        
+        tag_file_path = data_dir + '/' + split + '/audiocaps_' + split + '_tag_dict.pickle'
+        with open(tag_file_path, 'rb') as f:
+            audiocaps_tag_dict = pickle.load(f)
+        
         self.path_list = []
+        self.tag_list = []
         self.token_list = []
         
         # audio의 경로, audio에 해당하는 caption을 리스트에 추가
@@ -113,9 +120,15 @@ class AudioCaps_Dataset(Dataset):
                     if caption[-1] != '.' :
                         caption += '.'
                     
+                    # tag에 대한 라벨 생성
+                    tag_label = torch.zeros(527).type(torch.FloatTensor)
+                    tag_label_idx = audiocaps_tag_dict.get(file[:-4])
+                    tag_label[tag_label_idx] = 1
+                    
                     self.path_list.append(file)
                     caption_token = tokenizer(caption)['input_ids']
                     self.token_list.append(torch.tensor(caption_token))
+                    self.tag_list.append(tag_label)
                     
         self.all_len = torch.tensor([len(self.token_list[i]) for i in range(len(self.token_list))]).float()
         self.max_seq_len = min(int(self.all_len.mean() + self.all_len.std() * 10), int(self.all_len.max()))
@@ -165,7 +178,7 @@ class AudioCaps_Dataset(Dataset):
         tokens, mask = self.pad_tokens(item)
 
         # raw audio, gpt2_caption, file_name 출력
-        return audio_file, tokens, mask, self.path_list[item]
+        return audio_file, tokens, mask, self.tag_list[item], self.path_list[item]
     
 
 def dataloader_AudioCapsDataset(tokenizer, data_dir, batch_size, split, prefix_size, is_TrainDataset = False) :
@@ -187,6 +200,7 @@ def dataloader_AudioCapsDataset(tokenizer, data_dir, batch_size, split, prefix_s
                       drop_last=is_drop_last)
     
     return dataloader
+
 
 
 

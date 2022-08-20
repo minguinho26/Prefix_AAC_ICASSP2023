@@ -27,6 +27,9 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
     scheduler = get_cosine_schedule_with_warmup(
         optimizer, num_warmup_steps=warmup_steps, num_training_steps=epochs * len(train_dataloader))
     
+    BCE_Loss = nn.BCELoss()
+    alpha = 0.3
+    
     epoch_eval_interval = int(epochs/3)
     
     prefix_length = model.audio_prefix_length + model.semantic_prefix_length
@@ -35,7 +38,7 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
         pbar = tqdm(train_dataloader, desc=f"Training Epoch {epoch}")
         total_loss_per_epopch = 0.0
         loss_add_count = 0.0
-        for batch_i, (audio, tokens, mask, file_name) in enumerate(pbar) :
+        for batch_i, (audio, tokens, mask, tag, file_name) in enumerate(pbar) :
             
             audio = audio.to(device)
             tokens = tokens.to(device)
@@ -49,9 +52,14 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
                     temp_mask = mask[:,i, :] # [16, 1, -1]
                     temp_mask = temp_mask.squeeze(1) # [16, 1, -1] -> [16, -1]
                     
-                    logits = model(audio, temp_tokens, temp_mask)[:, prefix_length - 1: -1]
-
-                    loss = nnf.cross_entropy(logits.reshape(-1, logits.shape[-1]).to(device), temp_tokens.flatten().to(device), ignore_index=0)
+                    semantic_feature, logits = model(audio, temp_tokens, temp_mask)[:, prefix_length - 1: -1]
+                    
+                    tag_loss = BCE_Loss(semantic_feature, tag)
+                    
+                    caption_loss = nnf.cross_entropy(logits.reshape(-1, logits.shape[-1]).to(device), temp_tokens.flatten().to(device), ignore_index=0)
+                    
+                    loss = alpha * tag_loss + (1.0 - alpha) * caption_loss
+                    
                     total_loss_per_epopch += loss.item()
                     loss_add_count += 1.0
                     loss.backward()
@@ -59,7 +67,8 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
                     optimizer.zero_grad()
                 
             elif Dataset == 'AudioCaps' :
-                logits = model(audio, tokens, mask)[:, prefix_length - 1: -1]
+                semantic_feature, logits = model(audio, tokens, mask)
+                logits = logits[:, prefix_length - 1: -1]
             
                 loss = nnf.cross_entropy(logits.reshape(-1, logits.shape[-1]).to(device), tokens.flatten().to(device), ignore_index=0)
                 total_loss_per_epopch += loss.item()
@@ -81,8 +90,10 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
             if (epoch == epoch_eval_interval - 1) :
                 for param in model.audio_encoder.parameters():
                     param.requires_grad = False
-
+        
+        
         param_file_path = "./Train_record/params_" + model_name + "/Param_epoch_" + str(epoch) + ".pt"
+            
         torch.save(model.state_dict(), param_file_path)
 
 def eval_model(model, test_dataloader, tokenizer, epoch, model_name, beam_search, Dataset = 'AudioCaps') :
@@ -131,7 +142,7 @@ def eval_model_audiocaps(model, test_dataloader, tokenizer, epoch, model_name, b
     captions_pred: List[Dict] = []
     captions_gt: List[Dict] = []
     
-    for i, (audio, tokens, mask, f_names) in enumerate(tqdm(test_dataloader, desc="Eval...")):
+    for i, (audio, tokens, mask, tag, f_names) in enumerate(tqdm(test_dataloader, desc="Eval...")):
         with torch.no_grad():
             # 하나의 raw audio에 대해 5개의 caption이 등장
             
@@ -176,7 +187,7 @@ def eval_model_clotho(model, test_dataloader, tokenizer, epoch, model_name, beam
     captions_pred: List[Dict] = []
     captions_gt: List[Dict] = []
     
-    for i, (audio, tokens, mask, f_names) in enumerate(tqdm(test_dataloader, desc="Eval...")):
+    for i, (audio, tokens, mask, tag, f_names) in enumerate(tqdm(test_dataloader, desc="Eval...")):
         with torch.no_grad():
             # 하나의 raw audio에 대해 5개의 caption이 등장
 

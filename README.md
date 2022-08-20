@@ -88,3 +88,15 @@ python3 Evaluation_Clotho.py <모델명> <몇 번째 epoch에서 학습시켰는
 python3 Evaluation_AudioCaps.py <모델명> <몇 번째 epoch에서 학습시켰는지> <vocabulary의 크기>
 python3 Evaluation_Clotho.py <모델명> <몇 번째 epoch에서 학습시켰는지> <vocabulary의 크기>
 ```
+
+<br>
+
+# 추론 방법
+
+Inference.py를 다음과 같이 실행하면 됩니다. 
+```
+python3 Inference.py <학습시킨 Dataset> <vocabulary 종류> <audio file의 경로>
+# 예
+python3 Inference.py AudioSet GPT2 ./test.wav
+
+```

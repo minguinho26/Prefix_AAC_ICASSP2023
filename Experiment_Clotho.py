@@ -15,7 +15,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 # 폴더 생성 메소드
 def createDirectory(MODEL_NAME):
-    directory = "./Train_record/params_" + MODEL_NAME
+    directory = "./Train_record/params_" + MODEL_NAME 
     try:
         if not os.path.exists(directory):
             os.makedirs(directory)
@@ -88,3 +88,4 @@ Train(model, LR, train_dataloader, test_dataloader,
     Dataset = 'Clotho')
 
 torch.cuda.empty_cache()
+
