@@ -28,7 +28,7 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
         optimizer, num_warmup_steps=warmup_steps, num_training_steps=epochs * len(train_dataloader))
     
     BCE_Loss = nn.BCELoss()
-    alpha = 0.3
+    alpha = 0.5 # alpha가 높다 = tagging에 학습을 더 신경쓴다
     
     epoch_eval_interval = int(epochs/3)
     
@@ -43,6 +43,7 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
             audio = audio.to(device)
             tokens = tokens.to(device)
             mask = mask.to(device)
+            tag = tag.to(device)
             
             if Dataset == 'Clotho' :
                 for i in range(5) :
@@ -52,16 +53,21 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
                     temp_mask = mask[:,i, :] # [16, 1, -1]
                     temp_mask = temp_mask.squeeze(1) # [16, 1, -1] -> [16, -1]
                     
-                    semantic_feature, logits = model(audio, temp_tokens, temp_mask)[:, prefix_length - 1: -1]
-                    
-                    tag_loss = BCE_Loss(semantic_feature, tag)
-                    
+                    semantic_feature, logits = model(audio, temp_tokens, temp_mask)
+                    logits = logits[:, prefix_length - 1: -1]
+
                     caption_loss = nnf.cross_entropy(logits.reshape(-1, logits.shape[-1]).to(device), temp_tokens.flatten().to(device), ignore_index=0)
                     
-                    loss = alpha * tag_loss + (1.0 - alpha) * caption_loss
+                    # Clotho는 tag에 대한 data가 없어서 caption_loss만 사용한다
+                    loss = caption_loss
                     
                     total_loss_per_epopch += loss.item()
                     loss_add_count += 1.0
+                    
+#                     # 학습의 (1/3) 구간이 지난 시점부터 tuning에 사용할 Loss를 임의로 낮춰서 overfitting을 방지하는 건 어떨까? 
+#                     if (epoch > epoch_eval_interval - 1) :
+#                         loss /= 2.0
+                        
                     loss.backward()
                     optimizer.step()
                     optimizer.zero_grad()
@@ -69,10 +75,22 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
             elif Dataset == 'AudioCaps' :
                 semantic_feature, logits = model(audio, tokens, mask)
                 logits = logits[:, prefix_length - 1: -1]
-            
-                loss = nnf.cross_entropy(logits.reshape(-1, logits.shape[-1]).to(device), tokens.flatten().to(device), ignore_index=0)
+                
+                # AudioCaps는 Tag에 대한 데이터가 존재한다. 
+                # 얘도 학습에 써보려고 한다. 
+                tag_loss = BCE_Loss(semantic_feature, tag)
+                caption_loss = nnf.cross_entropy(logits.reshape(-1, logits.shape[-1]).to(device), tokens.flatten().to(device), ignore_index=0)
+                loss = alpha * tag_loss + (1.0 - alpha) * caption_loss
+                
                 total_loss_per_epopch += loss.item()
                 loss_add_count += 1.0
+                
+                # Batch size를 73으로 했을 때 (2/3) 구간까지는 성능향상이 있고 나머지 (1/3) 구간에서 overfitting으로 인한 성능 하락이 있다.
+                # 그러니 나머지 (2/3) 구간에서 적용할 Loss를 줄여보는 것도 괜찮은 방법이지 않을까? 
+                # 혹은 학습의 (1/3) 구간이 지난 시점부터 tuning에 사용할 Loss를 임의로 낮춰서 overfitting을 방지하는 건 어떨까? 
+#                 if (epoch > epoch_eval_interval - 1) :
+#                     loss /= 2.0
+                
                 loss.backward()
                 optimizer.step()
                 optimizer.zero_grad()
@@ -83,14 +101,13 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
             pbar.set_description(f"Training Epoch {epoch}, Loss = {round(avr_loss, 5)}")
             
         if (epoch == epoch_eval_interval - 1) or (epoch == (2 * epoch_eval_interval) - 1) or (epoch == (epochs - 1)) :
-            
             eval_model(model, test_dataloader, tokenizer, epoch, model_name, beam_search, Dataset = Dataset)
             model.train()
+            
             # 학습의 1/3 지점 이후에는 Encoder를 Freezing 시켜보기
             if (epoch == epoch_eval_interval - 1) :
                 for param in model.audio_encoder.parameters():
                     param.requires_grad = False
-        
         
         param_file_path = "./Train_record/params_" + model_name + "/Param_epoch_" + str(epoch) + ".pt"
             

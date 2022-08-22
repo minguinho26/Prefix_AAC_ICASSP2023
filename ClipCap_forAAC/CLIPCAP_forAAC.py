@@ -43,6 +43,7 @@ class TransformerMapper_forAudioFeature(nn.Module):
         
         x = self.conv(x) # [batch_size, 2048, 15, 2] -> [batch_size, 768, 15, 1]
         x = self.bn_conv(x) 
+#         x = nnf.dropout(x, p=0.2, training=self.training)
         
         x = torch.squeeze(x, 3) # [batch_size, 768, 15, 2] -> [batch_size, 768, 15]
         
@@ -85,6 +86,8 @@ class TransformerMapper_forSemanticFeature(nn.Module):
         x = (x.unsqueeze(1)).unsqueeze(1) # [batch_size, 528] -> [batch_size, 1, 1, 528]
         x = self.conv(x) # [batch_size, 1, 1, 528] -> [batch_size, 768, 1, 11] 
         x = self.bn_conv(x)
+#         x = nnf.dropout(x, p=0.2, training=self.training)
+        
         x = torch.squeeze(x, 2) # [batch_size, 768, 1, 11] -> [batch_size, 768, 11]
         x = x.permute(0, 2, 1) # [batch_size, 768, 11] -> [batch_size, 11, 768]
         
@@ -336,6 +339,9 @@ class ClipCap_AAC(nn.Module):
             self.semantic_clip_project.load_state_dict(torch.load(checkpoint_path))
             
             if vocab_size == None : # GPT2 tokenizer를 사용할 경우, huggingface에서 제공하는 header를 사용
+                checkpoint_path = './ClipCap_forAAC/PreTrained_GPT2Header.pt'
+                self.language_header.load_state_dict(torch.load(checkpoint_path))
+            else : # Custom Tokenizer를 사용할 경우
                 checkpoint_path = './ClipCap_forAAC/pre_trained_params_from_audiocaps/PreTrained_Header_fromAudioCaps.pt'
                 self.language_header.load_state_dict(torch.load(checkpoint_path))
         else :

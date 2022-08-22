@@ -41,7 +41,7 @@ gdown https://drive.google.com/file/d/1_XGxYhFRVybHear3Ixhd5TVvvV_-r1Zd/view?usp
 2. 아래 명령어를 입력합니다.
 
 ```
-gdown https://drive.google.com/file/d/1cpYlqFC1A5ihDjINOXt28NYDvWZi2pOQ/view?usp=sharing --fuzzy
+gdown https://drive.google.com/file/d/15ODyZmXDu_gwl-GcgQ6i_dBIeLKPG5-S/view?usp=sharing --fuzzy
 ```
 3. 다운로드 받은 AudioCaps_Dataset.zip을 압축해제 합니다.
 
