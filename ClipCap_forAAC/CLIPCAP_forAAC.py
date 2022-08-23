@@ -9,7 +9,6 @@ import math
 from torch.nn import functional as nnf
 from typing import Optional, Tuple
 
-from .audio_encoder import get_audio_encoder # audio encoder
 from ClipCap_forAAC.PANNs.CNN14 import Cnn14 # audio encoder : PANNs
 from .Transformer import * # transformer
 
