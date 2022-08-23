@@ -115,7 +115,7 @@ class TransformerMapper_forSemanticFeature_ver_2(nn.Module):
     def forward(self, x):
         
         x = x.unsqueeze(1) # [batch_size, 527] -> [batch_size, 1, 527]
-        x = self.conv(x) # [batch_size, 1, 527] -> [batch_size, 10, 527] 
+        x = self.conv(x) # [batch_size, 1, 527] -> [batch_size, 10, 527] (527-d vector의 각 elements를 10가지 측면에서 분석)
         x = self.bn_conv(x)
         x = nnf.dropout(x, p=0.2, training=self.training)
         
