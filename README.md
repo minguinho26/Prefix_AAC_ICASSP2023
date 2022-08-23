@@ -21,6 +21,7 @@ gdown https://drive.google.com/file/d/1H2MdXHu3P_ZQv6mXNvdnvz0PWJH7Lxht/view?usp
 
 ```
 5. 다운로드 받은 pre_trained_params.zip을 압축해제 합니다.
+6. 압축헤제를 하면 나오는 파일 중 PreTrained_GPT2Header.pt는 ClipCap_forAAC 폴더로 이동시켜줍니다
 
 <br>
 
