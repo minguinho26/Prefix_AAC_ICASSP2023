@@ -119,7 +119,7 @@ class TransformerMapper_forSemanticFeature_ver_2(nn.Module):
         x = nnf.dropout(x, p=0.2, training=self.training)
         
         dummy_val = torch.zeros(x.size()[0], x.size()[1], 241).to(self.device)
-        x = torch.cat((x, dummy_val), dim=2) # [batch_size, 10, 527] -> [batch_size, 10, 768] 
+        x = torch.cat((x, dummy_val), dim=2) # [batch_size, 10, 527] -> [batch_size, 10, 768] (768차원 맞춰주려고 dummy를 붙여줌)
 
         prefix = self.prefix_const.unsqueeze(0).expand(x.shape[0], *self.prefix_const.shape)
         prefix = torch.cat((x, prefix), dim=1)
@@ -134,8 +134,8 @@ class TransformerMapper_forSemanticFeature_ver_2(nn.Module):
         self.clip_length = clip_length
         self.transformer = Transformer(dim_embedding, 8, num_layers)
         
-        self.conv = nn.Conv1d(1, 11, 1, stride=1) # [Batch_size, 1, 527] -> [Batch_size, 10, 527]
-        self.bn_conv = nn.BatchNorm2d(dim_embedding)
+        self.conv = nn.Conv1d(1, 10, 1, stride=1) # [Batch_size, 1, 527] -> [Batch_size, 10, 527]
+        self.bn_conv = nn.BatchNorm1d(10)
         
         self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)       
 
