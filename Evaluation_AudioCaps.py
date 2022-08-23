@@ -40,7 +40,8 @@ Model_name = sys.argv[1]
 
 # PANNs를 써먹기 위해 prefix_size를 수정
 audio_prefix_size = 15
-semantic_prefix_size = 11
+# semantic_prefix_size = 11 # 기존의 Semantic mapping network를 사용시
+semantic_prefix_size = 10 # 새로운 Semantic mapping network를 사용시
 prefix_size = audio_prefix_size + semantic_prefix_size
 transformer_num_layers = {"audio_num_layers" : 4 , "semantic_num_layers" : 4}
 prefix_size_dict = {"audio_prefix_size" : audio_prefix_size, "semantic_prefix_size" : semantic_prefix_size}
@@ -59,7 +60,7 @@ test_dataloader  = dataloader_AudioCapsDataset(tokenizer, data_dir, TEST_BATCH_S
 USE_CUDA = torch.cuda.is_available() 
 device = torch.device('cuda:0' if USE_CUDA else 'cpu')
 
-model = get_ClipCap_AAC(tokenizer, vocab_size = None, mapping_type = 'TRANSFORMER', Dataset = 'AudioCaps',
+model = get_ClipCap_AAC(tokenizer, vocab_size = None, Dataset = 'AudioCaps',
                         prefix_size_dict = prefix_size_dict, transformer_num_layers = transformer_num_layers, 
                         encoder_freeze = False, decoder_freeze = True,
                         pretrain_fromAudioCaps = False, device = device)

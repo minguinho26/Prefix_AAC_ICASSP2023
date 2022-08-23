@@ -73,7 +73,7 @@ class TransformerMapper_forAudioFeature(nn.Module):
         
         
 # 527-d vector를 받음
-class TransformerMapper_forSemanticFeature(nn.Module):
+class TransformerMapper_forSemanticFeature_ver_1(nn.Module):
 
     def forward(self, x):
         
@@ -97,7 +97,7 @@ class TransformerMapper_forSemanticFeature(nn.Module):
         return out
 
     def __init__(self, dim_clip: int, dim_embedding: int, prefix_length: int, clip_length: int, num_layers: int = 8, device = 'cuda'):
-        super(TransformerMapper_forSemanticFeature, self).__init__()
+        super(TransformerMapper_forSemanticFeature_ver_1, self).__init__()
 
         self.device = device
 
@@ -108,20 +108,38 @@ class TransformerMapper_forSemanticFeature(nn.Module):
         self.bn_conv = nn.BatchNorm2d(dim_embedding)
         
         self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)
-        
-class MLP(nn.Module):
-    
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.model(x)
 
-    def __init__(self, sizes: Tuple[int, ...], bias=True, act=nn.Tanh):
-        super(MLP, self).__init__()
-        layers = []
-        for i in range(len(sizes) - 1):
-            layers.append(nn.Linear(sizes[i], sizes[i + 1], bias=bias))
-            if i < len(sizes) - 2:
-                layers.append(act())
-        self.model = nn.Sequential(*layers)
+# Semantic한 의미를 더 잘 전달해보고자 새로 제작한 Mapping network
+class TransformerMapper_forSemanticFeature_ver_2(nn.Module):
+
+    def forward(self, x):
+        
+        x = x.unsqueeze(1) # [batch_size, 527] -> [batch_size, 1, 527]
+        x = self.conv(x) # [batch_size, 1, 527] -> [batch_size, 10, 527] 
+        x = self.bn_conv(x)
+        x = nnf.dropout(x, p=0.2, training=self.training)
+        
+        dummy_val = torch.zeros(x.size()[0], x.size()[1], 241).to(self.device)
+        x = torch.cat((x, dummy_val), dim=2) # [batch_size, 10, 527] -> [batch_size, 10, 768] 
+
+        prefix = self.prefix_const.unsqueeze(0).expand(x.shape[0], *self.prefix_const.shape)
+        prefix = torch.cat((x, prefix), dim=1)
+        out = self.transformer(prefix)[:, self.clip_length:]
+        return out
+
+    def __init__(self, dim_clip: int, dim_embedding: int, prefix_length: int, clip_length: int, num_layers: int = 8, device = 'cuda'):
+        super(TransformerMapper_forSemanticFeature_ver_2, self).__init__()
+
+        self.device = device
+
+        self.clip_length = clip_length
+        self.transformer = Transformer(dim_embedding, 8, num_layers)
+        
+        self.conv = nn.Conv1d(1, 11, 1, stride=1) # [Batch_size, 1, 527] -> [Batch_size, 10, 527]
+        self.bn_conv = nn.BatchNorm2d(dim_embedding)
+        
+        self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)       
+
         
 class ClipCap_AAC(nn.Module):
 
@@ -308,20 +326,15 @@ class ClipCap_AAC(nn.Module):
             self.language_header = nn.Linear(768, vocab_size, bias=False) # vocab_size : custom vocabulary의 사이즈
 
         self.gpt_embedding_size = self.gpt.wte.weight.shape[1] # 768
+
+        self.audio_clip_project = TransformerMapper_forAudioFeature(audio_prefix_size, self.gpt_embedding_size, 
+                                                        self.audio_prefix_length, audio_clip_length, audio_num_layers, device)   
         
-        if mapping_type == 'MLP':
-            self.audio_clip_project = MLP((audio_prefix_size, (self.gpt_embedding_size * self.audio_prefix_length) // 2,
-                                     self.gpt_embedding_size * self.audio_prefix_length))
-            
-            self.semantic_clip_project = MLP((semantic_prefix_size, (self.gpt_embedding_size * self.semantic_prefix_length) // 2,
-                                     self.gpt_embedding_size * self.semantic_prefix_length))
-            
-        elif mapping_type == 'TRANSFORMER':
-            self.audio_clip_project = TransformerMapper_forAudioFeature(audio_prefix_size, self.gpt_embedding_size, 
-                                                        self.audio_prefix_length, audio_clip_length, audio_num_layers, device)
-            
-            self.semantic_clip_project = TransformerMapper_forSemanticFeature(semantic_prefix_size, self.gpt_embedding_size, 
-                                                           self.semantic_prefix_length, semantic_clip_length, semantic_num_layers, device)
+        # semantic의 prefix size가 11이면 ver_1이고 10이면 ver_2다
+        if semantic_clip_length == 11 :
+            self.semantic_clip_project = TransformerMapper_forSemanticFeature_ver_1(semantic_prefix_size, self.gpt_embedding_size, self.semantic_prefix_length, semantic_clip_length, semantic_num_layers, device)
+        elif semantic_clip_length == 10 :
+            self.semantic_clip_project = TransformerMapper_forSemanticFeature_ver_2(semantic_prefix_size, self.gpt_embedding_size, self.semantic_prefix_length, semantic_clip_length, semantic_num_layers, device)
             
         if encoder_freeze == True :
             for param in self.audio_encoder.parameters():
@@ -350,7 +363,7 @@ class ClipCap_AAC(nn.Module):
                 self.language_header.load_state_dict(torch.load(header_gpt2_header_params)) # Huggingface에서 사전학습된 header
             
                 
-def get_ClipCap_AAC(tokenizer, vocab_size = None, mapping_type = 'MLP', Dataset = 'AudioCaps',
+def get_ClipCap_AAC(tokenizer, vocab_size = None, Dataset = 'AudioCaps',
                     prefix_size_dict = {"audio_prefix_size" : 10, "semantic_prefix_size" : 10}, 
                     transformer_num_layers = None, encoder_freeze = True, decoder_freeze = True, 
                     pretrain_fromAudioCaps = False, device = 'cuda') :
@@ -384,6 +397,6 @@ def get_ClipCap_AAC(tokenizer, vocab_size = None, mapping_type = 'MLP', Dataset 
                         vocab_size, 
                         prefix_size_dict = prefix_size_dict, 
                         audio_num_layers = audio_num_layers, semantic_num_layers = semantic_num_layers, 
-                        mapping_type = mapping_type, pretrain_fromAudioCaps = pretrain_fromAudioCaps, device = device)
+                        pretrain_fromAudioCaps = pretrain_fromAudioCaps, device = device)
     
     return model.to(device)

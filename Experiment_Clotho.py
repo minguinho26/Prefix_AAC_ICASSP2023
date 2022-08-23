@@ -48,7 +48,8 @@ epochs = 50
 LR = 5e-5
 
 audio_prefix_size = 15
-semantic_prefix_size = 11
+# semantic_prefix_size = 11 # 기존의 Semantic mapping network를 사용시
+semantic_prefix_size = 10 # 새로운 Semantic mapping network를 사용시
 prefix_size = audio_prefix_size + semantic_prefix_size
 
 transformer_num_layers = {"audio_num_layers" : 4 , "semantic_num_layers" : 4}
@@ -78,7 +79,7 @@ createDirectory(MODEL_NAME)
 USE_CUDA = torch.cuda.is_available() 
 device = torch.device('cuda:0' if USE_CUDA else 'cpu')
 
-model = get_ClipCap_AAC(tokenizer, vocab_size = vocab_size, mapping_type = 'TRANSFORMER', Dataset = 'Clotho',
+model = get_ClipCap_AAC(tokenizer, vocab_size = vocab_size, Dataset = 'Clotho',
                         prefix_size_dict = prefix_size_dict, transformer_num_layers = transformer_num_layers, 
                         encoder_freeze = False, decoder_freeze = True,
                         pretrain_fromAudioCaps = True, device = device)

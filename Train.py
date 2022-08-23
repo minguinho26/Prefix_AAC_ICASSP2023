@@ -1,5 +1,7 @@
 from transformers import AdamW, get_cosine_schedule_with_warmup
 from tqdm import tqdm
+import time
+import datetime
 
 import torch
 import torch.nn as nn
@@ -34,6 +36,8 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
     
     prefix_length = model.audio_prefix_length + model.semantic_prefix_length
     
+    train_start_time = time.time()
+
     for epoch in range(epochs) :
         pbar = tqdm(train_dataloader, desc=f"Training Epoch {epoch}")
         total_loss_per_epopch = 0.0
@@ -112,6 +116,13 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
         param_file_path = "./Train_record/params_" + model_name + "/Param_epoch_" + str(epoch) + ".pt"
             
         torch.save(model.state_dict(), param_file_path)
+
+    train_end_time = time.time()
+    training_consumed_sec = train_end_time - train_start_time
+    result_list = str(datetime.timedelta(seconds=training_consumed_sec)).split(".")
+    print()
+    print("Training time :", result_list[0])
+
 
 def eval_model(model, test_dataloader, tokenizer, epoch, model_name, beam_search, Dataset = 'AudioCaps') :
     if Dataset == 'AudioCaps' :
