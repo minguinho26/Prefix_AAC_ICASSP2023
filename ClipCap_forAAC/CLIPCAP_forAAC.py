@@ -85,7 +85,6 @@ class TransformerMapper_forSemanticFeature_ver_1(nn.Module):
         x = (x.unsqueeze(1)).unsqueeze(1) # [batch_size, 528] -> [batch_size, 1, 1, 528]
         x = self.conv(x) # [batch_size, 1, 1, 528] -> [batch_size, 768, 1, 11] 
         x = self.bn_conv(x)
-#         x = nnf.dropout(x, p=0.2, training=self.training)
         
         x = torch.squeeze(x, 2) # [batch_size, 768, 1, 11] -> [batch_size, 768, 11]
         x = x.permute(0, 2, 1) # [batch_size, 768, 11] -> [batch_size, 11, 768]
@@ -114,9 +113,8 @@ class TransformerMapper_forSemanticFeature_ver_2(nn.Module):
     def forward(self, x):
         
         x = x.unsqueeze(1) # [batch_size, 527] -> [batch_size, 1, 527]
-        x = self.conv(x) # [batch_size, 1, 527] -> [batch_size, 10, 527] (527-d vector의 각 elements를 10가지 측면에서 분석)
+        x = self.conv(x) # [batch_size, 1, 527] -> [batch_size, 10, 527] (527-d vector의 각 elements를 11가지 측면에서 분석)
         x = self.bn_conv(x)
-        x = nnf.dropout(x, p=0.2, training=self.training)
         
         dummy_val = torch.zeros(x.size()[0], x.size()[1], 241).to(self.device)
         x = torch.cat((x, dummy_val), dim=2) # [batch_size, 10, 527] -> [batch_size, 10, 768] (768차원 맞춰주려고 dummy를 붙여줌)
@@ -134,8 +132,8 @@ class TransformerMapper_forSemanticFeature_ver_2(nn.Module):
         self.clip_length = clip_length
         self.transformer = Transformer(dim_embedding, 8, num_layers)
         
-        self.conv = nn.Conv1d(1, 10, 1, stride=1) # [Batch_size, 1, 527] -> [Batch_size, 10, 527]
-        self.bn_conv = nn.BatchNorm1d(10)
+        self.conv = nn.Conv1d(1, clip_length, 1, stride=1) # [Batch_size, 1, 527] -> [Batch_size, clip_length, 527]
+        self.bn_conv = nn.BatchNorm1d(clip_length)
         
         self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)       
 
@@ -304,7 +302,7 @@ class ClipCap_AAC(nn.Module):
                  prefix_size_dict = {"audio_prefix_size" : 10, "semantic_prefix_size" : 10}, 
                  audio_prefix_size = 2048, semantic_prefix_size = 1024, 
                  audio_num_layers = 2, semantic_num_layers = 2,
-                 mapping_type = 'MLP', pretrain_fromAudioCaps = False, device = 'cuda'):
+                 pretrain_fromAudioCaps = False, device = 'cuda'):
         
         super(ClipCap_AAC, self).__init__()
         self.device = device
