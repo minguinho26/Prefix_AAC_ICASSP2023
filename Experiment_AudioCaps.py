@@ -66,7 +66,7 @@ else :
     tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 
 TEST_BATCH_SIZE = 5
-TRAIN_BATCH_SIZE = 16
+TRAIN_BATCH_SIZE = 73
 test_dataloader  = dataloader_AudioCapsDataset(tokenizer, data_dir, TEST_BATCH_SIZE, split = 'test', prefix_size = prefix_size, is_TrainDataset = False)
 train_dataloader = dataloader_AudioCapsDataset(tokenizer, data_dir, TRAIN_BATCH_SIZE, split = 'train', prefix_size = prefix_size, is_TrainDataset = True)
 

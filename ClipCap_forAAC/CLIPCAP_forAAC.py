@@ -113,11 +113,11 @@ class TransformerMapper_forSemanticFeature_ver_2(nn.Module):
     def forward(self, x):
         
         x = x.unsqueeze(1) # [batch_size, 527] -> [batch_size, 1, 527]
-        x = self.conv(x) # [batch_size, 1, 527] -> [batch_size, 10, 527] (527-d vector의 각 elements를 11가지 측면에서 분석)
+        x = self.conv(x) # [batch_size, 1, 527] -> [batch_size, prefix_length, 527] (527-d vector의 각 elements를 prefix_length 가지 측면에서 분석)
         x = self.bn_conv(x)
         
         dummy_val = torch.zeros(x.size()[0], x.size()[1], 241).to(self.device)
-        x = torch.cat((x, dummy_val), dim=2) # [batch_size, 10, 527] -> [batch_size, 10, 768] (768차원 맞춰주려고 dummy를 붙여줌)
+        x = torch.cat((x, dummy_val), dim=2) # [batch_size, prefix_length, 527] -> [batch_size, prefix_length, 768] (768차원 맞춰주려고 dummy를 붙여줌)
 
         prefix = self.prefix_const.unsqueeze(0).expand(x.shape[0], *self.prefix_const.shape)
         prefix = torch.cat((x, prefix), dim=1)
