@@ -48,11 +48,11 @@ LR = 5e-5
 
 # PANNs를 써먹기 위해 prefix_size를 수정
 audio_prefix_size = 15
-# semantic_prefix_size = 11 # 기존의 Semantic mapping network를 사용시
-semantic_prefix_size = 10 # 새로운 Semantic mapping network를 사용시
+semantic_prefix_size = 11 # 기존의 Semantic mapping network를 사용시
+# semantic_prefix_size = 10 # 새로운 Semantic mapping network를 사용시
 prefix_size = audio_prefix_size + semantic_prefix_size
 
-transformer_num_layers = {"audio_num_layers" : 4 , "semantic_num_layers" : 4}
+transformer_num_layers = {"audio_num_layers" : 4, "semantic_num_layers" : 4}
 prefix_size_dict = {"audio_prefix_size" : audio_prefix_size, "semantic_prefix_size" : semantic_prefix_size}
 
 # argv의 개수가 2개다 : custom vocab을 사용했다

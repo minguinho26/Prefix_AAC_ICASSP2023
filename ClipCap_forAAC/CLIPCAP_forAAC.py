@@ -7,10 +7,11 @@ import numpy as np
 import math
 
 from torch.nn import functional as nnf
-from typing import Optional, Tuple
 
 from ClipCap_forAAC.PANNs.CNN14 import Cnn14 # audio encoder : PANNs
 from .Transformer import * # transformer
+
+num_head = 8
 
 # Pytorch에서 제공해주는 PE 
 class PositionalEncoding(nn.Module):
@@ -56,12 +57,12 @@ class TransformerMapper_forAudioFeature(nn.Module):
         out = self.transformer(prefix)[:, self.clip_length:]
         return out
 
-    def __init__(self, dim_clip: int, dim_embedding: int, prefix_length: int, clip_length: int, num_layers: int = 8, device = 'cuda'):
+    def __init__(self, dim_embedding: int, prefix_length: int, clip_length: int, num_layers: int = 8, device = 'cuda'):
         super(TransformerMapper_forAudioFeature, self).__init__()
         self.clip_length = clip_length
         
         self.device = device
-        self.transformer = Transformer(dim_embedding, 8, num_layers)
+        self.transformer = Transformer(dim_embedding, num_head, num_layers)
         # 시간대역 별로 특성을 분석
         self.conv = nn.Conv2d(2048, dim_embedding, (1, 2), stride=(1, 1), padding=(0, 0)) # [2048, 15, 2] -> [768, 15, 1]
         self.bn_conv = nn.BatchNorm2d(dim_embedding)
@@ -69,6 +70,8 @@ class TransformerMapper_forAudioFeature(nn.Module):
         self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)
         
         self.pos_encoder = PositionalEncoding(d_model=dim_embedding, dropout = 0.5) # positional encoding
+        
+        print("audio feature's mapping network : num_head =", num_head, "num_layers =", num_layers)
         
         
 # 527-d vector를 받음
@@ -94,50 +97,52 @@ class TransformerMapper_forSemanticFeature_ver_1(nn.Module):
         out = self.transformer(prefix)[:, self.clip_length:]
         return out
 
-    def __init__(self, dim_clip: int, dim_embedding: int, prefix_length: int, clip_length: int, num_layers: int = 8, device = 'cuda'):
+    def __init__(self, dim_embedding: int, prefix_length: int, clip_length: int, num_layers : int = 8, device = 'cuda'):
         super(TransformerMapper_forSemanticFeature_ver_1, self).__init__()
 
         self.device = device
 
         self.clip_length = clip_length
-        self.transformer = Transformer(dim_embedding, 8, num_layers)
+        self.transformer = Transformer(dim_embedding, num_head, num_layers)
         
         self.conv = nn.Conv2d(1, 768, (1, 48), stride=(1, 48), padding=(0, 0))
         self.bn_conv = nn.BatchNorm2d(dim_embedding)
         
         self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)
+        
+        print("semantic feature's mapping network : num_head =", num_head, "num_layers =", num_layers)
 
-# Semantic한 의미를 더 잘 전달해보고자 새로 제작한 Mapping network
 class TransformerMapper_forSemanticFeature_ver_2(nn.Module):
-
+    
     def forward(self, x):
         
-        x = x.unsqueeze(1) # [batch_size, 527] -> [batch_size, 1, 527]
-        x = self.conv(x) # [batch_size, 1, 527] -> [batch_size, prefix_length, 527] (527-d vector의 각 elements를 prefix_length 가지 측면에서 분석)
+        x = self.linear(x) # [batch_size, 527] -> [batch_size, 768]
+        x = self.bn_linear(x)
+        x = self.conv(x.unsqueeze(1)) # [batch_size, 768] -> [batch_size, 1, 768] -> [batch_size, 10, 768]
         x = self.bn_conv(x)
-        
-        dummy_val = torch.zeros(x.size()[0], x.size()[1], 241).to(self.device)
-        x = torch.cat((x, dummy_val), dim=2) # [batch_size, prefix_length, 527] -> [batch_size, prefix_length, 768] (768차원 맞춰주려고 dummy를 붙여줌)
 
         prefix = self.prefix_const.unsqueeze(0).expand(x.shape[0], *self.prefix_const.shape)
         prefix = torch.cat((x, prefix), dim=1)
         out = self.transformer(prefix)[:, self.clip_length:]
         return out
 
-    def __init__(self, dim_clip: int, dim_embedding: int, prefix_length: int, clip_length: int, num_layers: int = 8, device = 'cuda'):
+    def __init__(self, dim_embedding: int, prefix_length: int, clip_length: int, num_layers: int = 8, device = 'cuda'):
         super(TransformerMapper_forSemanticFeature_ver_2, self).__init__()
 
         self.device = device
 
         self.clip_length = clip_length
-        self.transformer = Transformer(dim_embedding, 8, num_layers)
+        self.transformer = Transformer(dim_embedding, num_head, num_layers)
         
-        self.conv = nn.Conv1d(1, clip_length, 1, stride=1) # [Batch_size, 1, 527] -> [Batch_size, clip_length, 527]
-        self.bn_conv = nn.BatchNorm1d(clip_length)
+        self.linear = nn.Linear(527, 768)
+        self.bn_linear = nn.BatchNorm1d(dim_embedding)
+        self.conv = nn.Conv1d(1, 10, 1, stride=1)
+        self.bn_conv = nn.BatchNorm1d(10)
         
-        self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)       
+        self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)
+        
+        print("semantic feature's mapping network : num_head =", num_head, "num_layers =", num_layers)
 
-        
 class ClipCap_AAC(nn.Module):
 
     def get_dummy_token(self, batch_size: int, device: torch.device) -> torch.Tensor:
@@ -300,7 +305,6 @@ class ClipCap_AAC(nn.Module):
     def __init__(self, audio_encoder, tokenizer, encoder_freeze = True, decoder_freeze = True, 
                  vocab_size = None,
                  prefix_size_dict = {"audio_prefix_size" : 10, "semantic_prefix_size" : 10}, 
-                 audio_prefix_size = 2048, semantic_prefix_size = 1024, 
                  audio_num_layers = 2, semantic_num_layers = 2,
                  pretrain_fromAudioCaps = False, device = 'cuda'):
         
@@ -324,14 +328,19 @@ class ClipCap_AAC(nn.Module):
 
         self.gpt_embedding_size = self.gpt.wte.weight.shape[1] # 768
 
-        self.audio_clip_project = TransformerMapper_forAudioFeature(audio_prefix_size, self.gpt_embedding_size, 
-                                                        self.audio_prefix_length, audio_clip_length, audio_num_layers, device)   
+        self.audio_clip_project = TransformerMapper_forAudioFeature(dim_embedding = self.gpt_embedding_size, 
+                                    prefix_length = self.audio_prefix_length, clip_length = audio_clip_length, 
+                                    num_layers = audio_num_layers, device = device)   
         
         # semantic의 prefix size가 11이면 ver_1이고 10이면 ver_2다
         if semantic_clip_length == 11 :
-            self.semantic_clip_project = TransformerMapper_forSemanticFeature_ver_1(semantic_prefix_size, self.gpt_embedding_size, self.semantic_prefix_length, semantic_clip_length, semantic_num_layers, device)
+            self.semantic_clip_project = TransformerMapper_forSemanticFeature_ver_1(dim_embedding = self.gpt_embedding_size, 
+                                            prefix_length = self.semantic_prefix_length, clip_length = semantic_clip_length, 
+                                            num_layers = semantic_num_layers, device = device)
         elif semantic_clip_length == 10 :
-            self.semantic_clip_project = TransformerMapper_forSemanticFeature_ver_2(semantic_prefix_size, self.gpt_embedding_size, self.semantic_prefix_length, semantic_clip_length, semantic_num_layers, device)
+            self.semantic_clip_project = TransformerMapper_forSemanticFeature_ver_2(dim_embedding = self.gpt_embedding_size, 
+                                            prefix_length = self.semantic_prefix_length, clip_length = semantic_clip_length, 
+                                            num_layers = semantic_num_layers, device = device)
             
         if encoder_freeze == True :
             for param in self.audio_encoder.parameters():
@@ -379,7 +388,8 @@ def get_ClipCap_AAC(tokenizer, vocab_size = None, Dataset = 'AudioCaps',
         checkpoint_path = "./ClipCap_forAAC/audio_encoder_SOTA_in_Audiocaps.pt"
         audio_encoder.load_state_dict(torch.load(checkpoint_path))
     
-    # Clotho는 30초짜리 audio를 쓰는데 ours는 10초짜리 오디오만 처리함. 그래서 30초짜리 audio로 뽑은 값을 10초짜리 오디오로 뽑은 값과 같이 압축시켜주는 module이 필요함
+    # Clotho는 30초짜리 audio를 쓰는데 ours는 10초짜리 오디오만 처리함. 
+    # 그래서 30초짜리 audio로 뽑은 값을 10초짜리 오디오로 뽑은 값과 같이 압축시켜주는 module이 필요함
     # 그러한 module을 추가해주는 method가 add_compress_feature()임
     if Dataset == 'Clotho' :
         audio_encoder.add_compress_feature()

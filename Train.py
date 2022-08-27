@@ -30,14 +30,17 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
         optimizer, num_warmup_steps=warmup_steps, num_training_steps=epochs * len(train_dataloader))
     
     BCE_Loss = nn.BCELoss()
-    alpha = 0.5 # alpha가 높다 = tagging에 학습을 더 신경쓴다
+    alpha = 0.0 # alpha가 높다 = tagging에 학습을 더 신경쓴다
     
     epoch_eval_interval = int(epochs/3)
     
     prefix_length = model.audio_prefix_length + model.semantic_prefix_length
     
     train_start_time = time.time()
-
+    
+    training_step = 0
+    is_change_to_freeze_encoder = False
+    
     for epoch in range(epochs) :
         pbar = tqdm(train_dataloader, desc=f"Training Epoch {epoch}")
         total_loss_per_epopch = 0.0
@@ -75,6 +78,7 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
                     loss.backward()
                     optimizer.step()
                     optimizer.zero_grad()
+                    training_step += 1
                 
             elif Dataset == 'AudioCaps' :
                 semantic_feature, logits = model(audio, tokens, mask)
@@ -98,20 +102,25 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
                 loss.backward()
                 optimizer.step()
                 optimizer.zero_grad()
+                training_step += 1
                 
             scheduler.step()
             
             avr_loss = total_loss_per_epopch / loss_add_count
             pbar.set_description(f"Training Epoch {epoch}, Loss = {round(avr_loss, 5)}")
-            
+        
+        # LR이 상승하는 구간까지만 encoder를 Trainable하게 만들자
+        # epoch 단위로 검사하기
+        if (training_step >= warmup_steps) and (is_change_to_freeze_encoder == False) :
+            for param in model.audio_encoder.parameters():
+                param.requires_grad = False
+            is_change_to_freeze_encoder = True
+            print("Set encoder freeze")
+        
+        
         if (epoch == epoch_eval_interval - 1) or (epoch == (2 * epoch_eval_interval) - 1) or (epoch == (epochs - 1)) :
             eval_model(model, test_dataloader, tokenizer, epoch, model_name, beam_search, Dataset = Dataset)
             model.train()
-            
-            # 학습의 1/3 지점 이후에는 Encoder를 Freezing 시켜보기
-            if (epoch == epoch_eval_interval - 1) :
-                for param in model.audio_encoder.parameters():
-                    param.requires_grad = False
         
         param_file_path = "./Train_record/params_" + model_name + "/Param_epoch_" + str(epoch) + ".pt"
             
