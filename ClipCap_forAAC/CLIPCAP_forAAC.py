@@ -110,7 +110,7 @@ class TransformerMapper_forSemanticFeature_ver_1(nn.Module):
         
         self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)
         
-        print("semantic feature's mapping network : num_head =", num_head, "num_layers =", num_layers)
+        print("semantic feature ver1's mapping network : num_head =", num_head, "num_layers =", num_layers)
 
 class TransformerMapper_forSemanticFeature_ver_2(nn.Module):
     
@@ -118,8 +118,14 @@ class TransformerMapper_forSemanticFeature_ver_2(nn.Module):
         
         x = self.linear(x) # [batch_size, 527] -> [batch_size, 768]
         x = self.bn_linear(x)
-        x = self.conv(x.unsqueeze(1)) # [batch_size, 768] -> [batch_size, 1, 768] -> [batch_size, 10, 768]
+        
+        x = x.unsqueeze(2) # [batch_size, 768] -> [batch_size, 768, 1]
+        x = x.expand(x.size()[0],x.size()[1], self.prefix_length) # [batch_size, 768, 1] -> [batch_size, 768, 10]
+        
+        x = self.conv(x) # [batch_size, 768, 10] -> [batch_size, 768, 10]
         x = self.bn_conv(x)
+        
+        x = x.permute(0, 2, 1) # [batch_size, 768, 10] -> [batch_size, 10, 768]
 
         prefix = self.prefix_const.unsqueeze(0).expand(x.shape[0], *self.prefix_const.shape)
         prefix = torch.cat((x, prefix), dim=1)
@@ -130,18 +136,20 @@ class TransformerMapper_forSemanticFeature_ver_2(nn.Module):
         super(TransformerMapper_forSemanticFeature_ver_2, self).__init__()
 
         self.device = device
-
+        
+        self.prefix_length = prefix_length
         self.clip_length = clip_length
         self.transformer = Transformer(dim_embedding, num_head, num_layers)
         
         self.linear = nn.Linear(527, 768)
         self.bn_linear = nn.BatchNorm1d(dim_embedding)
-        self.conv = nn.Conv1d(1, 10, 1, stride=1)
-        self.bn_conv = nn.BatchNorm1d(10)
+        
+        self.conv = nn.Conv1d(768, 768, 1, stride=1)
+        self.bn_conv = nn.BatchNorm1d(dim_embedding)
         
         self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)
         
-        print("semantic feature's mapping network : num_head =", num_head, "num_layers =", num_layers)
+        print("semantic feature ver2's mapping network : num_head =", num_head, "num_layers =", num_layers)
 
 class ClipCap_AAC(nn.Module):
 
@@ -357,16 +365,10 @@ class ClipCap_AAC(nn.Module):
             checkpoint_path = "./ClipCap_forAAC/pre_trained_params_from_audiocaps/semantic_clip_project_SOTA_in_Audiocaps.pt"
             self.semantic_clip_project.load_state_dict(torch.load(checkpoint_path))
             
-            if vocab_size == None : # GPT2 tokenizer를 사용할 경우, huggingface에서 제공하는 header를 사용
-                checkpoint_path = './ClipCap_forAAC/PreTrained_GPT2Header.pt'
-                self.language_header.load_state_dict(torch.load(checkpoint_path))
-            else : # Custom Tokenizer를 사용할 경우
-                checkpoint_path = './ClipCap_forAAC/pre_trained_params_from_audiocaps/PreTrained_Header_fromAudioCaps.pt'
-                self.language_header.load_state_dict(torch.load(checkpoint_path))
-        else :
-            if vocab_size == None : # GPT2 tokenizer를 사용할 경우, huggingface에서 제공하는 header를 사용
-                header_gpt2_header_params = './ClipCap_forAAC/PreTrained_GPT2Header.pt'
-                self.language_header.load_state_dict(torch.load(header_gpt2_header_params)) # Huggingface에서 사전학습된 header
+
+        if vocab_size == None : # GPT2 tokenizer를 사용할 경우, huggingface에서 제공하는 header를 사용
+            header_gpt2_header_params = './ClipCap_forAAC/PreTrained_GPT2Header.pt'
+            self.language_header.load_state_dict(torch.load(header_gpt2_header_params)) # Huggingface에서 사전학습된 header
             
                 
 def get_ClipCap_AAC(tokenizer, vocab_size = None, Dataset = 'AudioCaps',

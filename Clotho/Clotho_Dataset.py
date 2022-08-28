@@ -9,29 +9,12 @@ from tqdm import tqdm
 import pickle
 import re
 
-# Clotho에 등장하는 단어들을 가지고 만든 Dictionary를 이용해 token으로 만들어줌
+# vocabulary만들 때 소문자로 변환만 한 경우 사용되는 tokenizer
 class tokenizer_Clotho() :
     
     def encode(self, sentence) :
         
-        # 마침표 제거
-        sentence = re.sub(r'[.]', '', sentence) 
-
-        # 쉼표 오류 제거
-        sentence = sentence.replace(',', ' , ') 
-
-        # 공백 줄이기
-        sentence = re.sub(' +', ' ', sentence)
-
-        sentence = sentence.replace(' ,', ',')
-
-        # caption의 마지막이 쉼표일 경우 제거
-        if sentence[-1] == ',' :
-            sentence = sentence[:-1]
-
-        sentence = sentence.strip()
-        
-        if self.vocab_size == 7983 :
+        if self.vocab_size == 7556 :
             sentence += '.'
         
         word_list = sentence.split(' ')
@@ -39,16 +22,12 @@ class tokenizer_Clotho() :
         token_idx = []
         for word in word_list : 
             temp_word = word.lower()
-            if self.vocab_size == 4383 and temp_word[-1] == ',' :
+            if self.vocab_size == 4372 and temp_word[-1] == ',' :
                 temp_word_wo_rest = temp_word[:-1]
                 token_idx.append(self.vocab.index(temp_word_wo_rest))
                 token_idx.append(self.vocab.index(','))
             else :
                 token_idx.append(self.vocab.index(temp_word))
-
-        # 만약 마침표가 반영된 vocab이면 '.' 토큰도 추가
-        if self.vocab_size == 5737 :
-            token_idx.append(self.vocab.index('.'))
             
         # 마지막에 <eos> 추가
         token_idx.append(13)
@@ -76,20 +55,16 @@ class tokenizer_Clotho() :
         file_path = ''
         self.vocab_size = vocab_size
         
-        if vocab_size == 4383 :
-            file_path = './Clotho/Clotho_vocabulary_lower_case_import_rest_len_4383.pickle'
-        elif vocab_size == 5737 :
-            file_path = './Clotho/Clotho_vocabulary_lower_case_import_stopword_len_5737.pickle'
-        elif vocab_size == 5736 :
-            file_path = './Clotho/Clotho_vocabulary_lower_remove_stopword_len_5736.pickle'
-        elif vocab_size == 7983 :
-            file_path = './Clotho/Clotho_vocabulary_lower_len_7983.pickle'
+        if vocab_size == 4372 :
+            file_path = './Clotho/Clotho_vocabulary_4372.pickle'
+        elif vocab_size == 7556 :
+            file_path = './Clotho/Clotho_vocabulary_7556.pickle'
         
-        with open(file_path, 'rb') as f :
+        with open(file_path, 'rb') as f:
             self.vocab = pickle.load(f) 
 
 class ClothoDataset(Dataset):
-    def __init__(self, tokenizer, data_dir, split, prefix_size) :  # split = 'development' or 'evaluation'
+    def __init__(self, tokenizer, data_dir, split, prefix_size, tokenizer_type = 'GPT2') :  # split = 'development' or 'evaluation'
         super(ClothoDataset, self).__init__()
         
         self.SAMPLE_RATE = 44100
@@ -116,32 +91,33 @@ class ClothoDataset(Dataset):
             token_list_inEachAudio = []
             for i in range(5) :
                 
-                sentence_str = 'caption_' + str(i + 1)
-                sentence = csv_file[csv_file['file_name'] == file][sentence_str].item()
+                caption_str = 'caption_' + str(i + 1)
+                caption = csv_file[csv_file['file_name'] == file][caption_str].item()
 
+                # 문장 교정================================
                 # 마침표 제거
-                sentence = re.sub(r'[.]', '', sentence)
+                caption = re.sub(r'[.]', '', caption) 
 
                 # 쉼표 오류 제거
-                sentence = sentence.replace(',', ' , ') 
+                caption = caption.replace(',', ' , ') 
 
                 # 공백 줄이기
-                sentence = re.sub(' +', ' ', sentence)
+                caption = re.sub(' +', ' ', caption)
 
-                sentence = sentence.replace(' ,', ',')
-
-                # caption의 마지막이 쉼표일 경우 제거
-                if sentence[-1] == ',' :
-                    sentence = sentence[:-1]
+                caption = caption.replace(' ,', ',')
                     
-                # 문장이 끝난다는걸 나타내는 마침표가 없는 caption이 있다. 
-                # 마침표가 없을 경우 마침표를 따로 넣어주자 
-                if sentence[-1] != '.' :
-                    sentence += '.'
+                # caption의 마지막이 쉼표일 경우 제거
+                if caption[-1] == ',' :
+                    caption = caption[:-1]
 
-                sentence = sentence.strip()
+                caption = caption.strip()
+                # 문장 교정================================
                 
-                tokens = tokenizer.encode(sentence)
+                if tokenizer_type == 'GPT2' :
+                    caption += '.'
+                    tokens = tokenizer(caption)['input_ids']
+                else :
+                    tokens = tokenizer.encode(caption)
                 
                 token_list_inEachAudio.append(tokens)
                 all_audio_token_list.append(tokens)
