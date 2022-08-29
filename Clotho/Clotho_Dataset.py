@@ -91,10 +91,9 @@ class ClothoDataset(Dataset):
             token_list_inEachAudio = []
             for i in range(5) :
                 
-                caption_str = 'caption_' + str(i + 1)
-                caption = csv_file[csv_file['file_name'] == file][caption_str].item()
+                sentence_str = 'caption_' + str(i + 1)
+                caption = csv_file[csv_file['file_name'] == file][sentence_str].item()
 
-                # 문장 교정================================
                 # 마침표 제거
                 caption = re.sub(r'[.]', '', caption) 
 
@@ -105,13 +104,12 @@ class ClothoDataset(Dataset):
                 caption = re.sub(' +', ' ', caption)
 
                 caption = caption.replace(' ,', ',')
-                    
+                
                 # caption의 마지막이 쉼표일 경우 제거
                 if caption[-1] == ',' :
                     caption = caption[:-1]
-
-                caption = caption.strip()
-                # 문장 교정================================
+                    
+                caption = caption.strip()  
                 
                 if tokenizer_type == 'GPT2' :
                     caption += '.'

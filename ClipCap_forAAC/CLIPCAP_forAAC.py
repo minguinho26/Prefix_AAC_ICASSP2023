@@ -47,10 +47,10 @@ class TransformerMapper_forAudioFeature(nn.Module):
         
         x = torch.squeeze(x, 3) # [batch_size, 768, 15, 2] -> [batch_size, 768, 15]
         
-        x = x.permute(2, 0, 1) # [batch_size, 768, 15] -> [15, batch_size, 768]
+        x = x.permute(2, 0, 1).contiguous() # [batch_size, 768, 15] -> [15, batch_size, 768]
         x = self.pos_encoder(x) # positional encoding
         
-        x = x.permute(1, 0, 2) # [15, batch_size, 768] -> [batch_size, 15, 768]
+        x = x.permute(1, 0, 2).contiguous() # [15, batch_size, 768] -> [batch_size, 15, 768]
         
         prefix = self.prefix_const.unsqueeze(0).expand(x.shape[0], *self.prefix_const.shape)
         prefix = torch.cat((x, prefix), dim=1)
@@ -90,7 +90,7 @@ class TransformerMapper_forSemanticFeature_ver_1(nn.Module):
         x = self.bn_conv(x)
         
         x = torch.squeeze(x, 2) # [batch_size, 768, 1, 11] -> [batch_size, 768, 11]
-        x = x.permute(0, 2, 1) # [batch_size, 768, 11] -> [batch_size, 11, 768]
+        x = x.permute(0, 2, 1).contiguous() # [batch_size, 768, 11] -> [batch_size, 11, 768]
         
         prefix = self.prefix_const.unsqueeze(0).expand(x.shape[0], *self.prefix_const.shape)
         prefix = torch.cat((x, prefix), dim=1)
@@ -116,36 +116,39 @@ class TransformerMapper_forSemanticFeature_ver_2(nn.Module):
     
     def forward(self, x):
         
-        x = self.linear(x) # [batch_size, 527] -> [batch_size, 768]
+        # 받은 vector는 527 종류의 오디오가 각각 얼마나 있는지 나타낸 값이다
+        # 얘를 640차원의 벡터로 만든다. 즉, [1, 1, 704] 크기의 feature map이 만들어진다. 얘를 conv2d로 분석해서 [768, 1, 11]으로 만들어준다
+        # 그리고 [768, 11]으로 줄인 뒤 permute 해서 [10, 768]로 만들어준다. 그러면 768개의 차원의 가진 token 10개가 된다
+        
+        x = self.linear(x) # [batch_size, 527] -> [batch_size, 704]
         x = self.bn_linear(x)
         
-        x = x.unsqueeze(2) # [batch_size, 768] -> [batch_size, 768, 1]
-        x = x.expand(x.size()[0],x.size()[1], self.prefix_length) # [batch_size, 768, 1] -> [batch_size, 768, 10]
-        
-        x = self.conv(x) # [batch_size, 768, 10] -> [batch_size, 768, 10]
+        x = (x.unsqueeze(1)).unsqueeze(1) # [batch_size, 640] -> [batch_size, 1, 1, 640]
+        x = self.conv(x) # [batch_size, 1, 1, 640] -> [batch_size, 768, 1, 11] 
         x = self.bn_conv(x)
         
-        x = x.permute(0, 2, 1) # [batch_size, 768, 10] -> [batch_size, 10, 768]
-
+        x = torch.squeeze(x, 2) # [batch_size, 768, 1, 11] -> [batch_size, 768, 11]
+        x = x.permute(0, 2, 1).contiguous() # [batch_size, 768, 11] -> [batch_size, 11, 768]
+        
         prefix = self.prefix_const.unsqueeze(0).expand(x.shape[0], *self.prefix_const.shape)
         prefix = torch.cat((x, prefix), dim=1)
         out = self.transformer(prefix)[:, self.clip_length:]
         return out
 
-    def __init__(self, dim_embedding: int, prefix_length: int, clip_length: int, num_layers: int = 8, device = 'cuda'):
+    def __init__(self, dim_embedding: int, prefix_length: int, clip_length: int, num_layers : int = 8, device = 'cuda'):
         super(TransformerMapper_forSemanticFeature_ver_2, self).__init__()
 
         self.device = device
-        
-        self.prefix_length = prefix_length
+
         self.clip_length = clip_length
         self.transformer = Transformer(dim_embedding, num_head, num_layers)
         
-        self.linear = nn.Linear(527, 768)
-        self.bn_linear = nn.BatchNorm1d(dim_embedding)
         
-        self.conv = nn.Conv1d(768, 768, 1, stride=1)
-        self.bn_conv = nn.BatchNorm1d(dim_embedding)
+        self.linear = nn.Linear(527, 704)
+        self.bn_linear = nn.BatchNorm1d(704)
+        
+        self.conv = nn.Conv2d(1, 768, (1, 64), stride=(1, 64), padding=(0, 0))
+        self.bn_conv = nn.BatchNorm2d(dim_embedding)
         
         self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)
         
@@ -161,7 +164,11 @@ class ClipCap_AAC(nn.Module):
         entry_count = prefix_projections.size()[0]
         entry_length = 67
         temperature=1.0
-        stop_token_index = self.tokenizer.encode(".")[0]
+                
+        if self.vocab_size == None :
+            stop_token_index = self.tokenizer.encode(".")[0]
+        else :
+            stop_token_index = 13
         
         output_texts_list = []
         
@@ -236,7 +243,12 @@ class ClipCap_AAC(nn.Module):
         temperature = 1.0
         entry_length = 67
         top_p = 0.8
-        stop_token_index = self.tokenizer.encode(".")[0]
+        
+        if self.vocab_size == None :
+            stop_token_index = self.tokenizer.encode(".")[0]
+        else :
+            stop_token_index = 13
+            
         filter_value = -float("Inf")
         generated_list = []
         
@@ -310,7 +322,8 @@ class ClipCap_AAC(nn.Module):
                 return self.generate(prefix_projections)
             
 
-    def __init__(self, audio_encoder, tokenizer, encoder_freeze = True, decoder_freeze = True, 
+    def __init__(self, audio_encoder, tokenizer, mapping_network_ver,
+                 encoder_freeze = True, decoder_freeze = True, 
                  vocab_size = None,
                  prefix_size_dict = {"audio_prefix_size" : 10, "semantic_prefix_size" : 10}, 
                  audio_num_layers = 2, semantic_num_layers = 2,
@@ -318,6 +331,7 @@ class ClipCap_AAC(nn.Module):
         
         super(ClipCap_AAC, self).__init__()
         self.device = device
+        self.vocab_size = vocab_size
         self.audio_prefix_length = prefix_size_dict["audio_prefix_size"]
         self.semantic_prefix_length = prefix_size_dict["semantic_prefix_size"]
         
@@ -340,12 +354,12 @@ class ClipCap_AAC(nn.Module):
                                     prefix_length = self.audio_prefix_length, clip_length = audio_clip_length, 
                                     num_layers = audio_num_layers, device = device)   
         
-        # semantic의 prefix size가 11이면 ver_1이고 10이면 ver_2다
-        if semantic_clip_length == 11 :
+        # mapping network의 version을 선택
+        if mapping_network_ver == 1 :
             self.semantic_clip_project = TransformerMapper_forSemanticFeature_ver_1(dim_embedding = self.gpt_embedding_size, 
                                             prefix_length = self.semantic_prefix_length, clip_length = semantic_clip_length, 
                                             num_layers = semantic_num_layers, device = device)
-        elif semantic_clip_length == 10 :
+        elif mapping_network_ver == 2 :
             self.semantic_clip_project = TransformerMapper_forSemanticFeature_ver_2(dim_embedding = self.gpt_embedding_size, 
                                             prefix_length = self.semantic_prefix_length, clip_length = semantic_clip_length, 
                                             num_layers = semantic_num_layers, device = device)
@@ -371,7 +385,8 @@ class ClipCap_AAC(nn.Module):
             self.language_header.load_state_dict(torch.load(header_gpt2_header_params)) # Huggingface에서 사전학습된 header
             
                 
-def get_ClipCap_AAC(tokenizer, vocab_size = None, Dataset = 'AudioCaps',
+def get_ClipCap_AAC(tokenizer, mapping_network_ver = 1, 
+                    vocab_size = None, Dataset = 'AudioCaps',
                     prefix_size_dict = {"audio_prefix_size" : 10, "semantic_prefix_size" : 10}, 
                     transformer_num_layers = None, encoder_freeze = True, decoder_freeze = True, 
                     pretrain_fromAudioCaps = False, device = 'cuda') :
@@ -401,7 +416,7 @@ def get_ClipCap_AAC(tokenizer, vocab_size = None, Dataset = 'AudioCaps',
     audio_num_layers = transformer_num_layers["audio_num_layers"]
     semantic_num_layers = transformer_num_layers["semantic_num_layers"]
 
-    model = ClipCap_AAC(audio_encoder, tokenizer, 
+    model = ClipCap_AAC(audio_encoder, tokenizer, mapping_network_ver,
                         encoder_freeze, decoder_freeze, 
                         vocab_size, 
                         prefix_size_dict = prefix_size_dict, 

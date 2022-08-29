@@ -29,9 +29,6 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
     scheduler = get_cosine_schedule_with_warmup(
         optimizer, num_warmup_steps=warmup_steps, num_training_steps=epochs * len(train_dataloader))
     
-    BCE_Loss = nn.BCELoss()
-    alpha = 0.0 # alpha가 높다 = tagging에 학습을 더 신경쓴다
-    
     epoch_eval_interval = int(epochs/3)
     
     prefix_length = model.audio_prefix_length + model.semantic_prefix_length
@@ -45,12 +42,11 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
         pbar = tqdm(train_dataloader, desc=f"Training Epoch {epoch}")
         total_loss_per_epopch = 0.0
         loss_add_count = 0.0
-        for batch_i, (audio, tokens, mask, tag, file_name) in enumerate(pbar) :
+        for batch_i, (audio, tokens, mask, file_name) in enumerate(pbar) :
             
             audio = audio.to(device)
             tokens = tokens.to(device)
             mask = mask.to(device)
-            tag = tag.to(device)
             
             if Dataset == 'Clotho' :
                 for i in range(5) :
@@ -84,11 +80,7 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
                 semantic_feature, logits = model(audio, tokens, mask)
                 logits = logits[:, prefix_length - 1: -1]
                 
-                # AudioCaps는 Tag에 대한 데이터가 존재한다. 
-                # 얘도 학습에 써보려고 한다. 
-                tag_loss = BCE_Loss(semantic_feature, tag)
-                caption_loss = nnf.cross_entropy(logits.reshape(-1, logits.shape[-1]).to(device), tokens.flatten().to(device), ignore_index=0)
-                loss = alpha * tag_loss + (1.0 - alpha) * caption_loss
+                loss = nnf.cross_entropy(logits.reshape(-1, logits.shape[-1]).to(device), tokens.flatten().to(device), ignore_index=0)
                 
                 total_loss_per_epopch += loss.item()
                 loss_add_count += 1.0
@@ -111,16 +103,24 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
         
         # LR이 상승하는 구간까지만 encoder를 Trainable하게 만들자
         # epoch 단위로 검사하기
-        if (training_step >= warmup_steps) and (is_change_to_freeze_encoder == False) :
-            for param in model.audio_encoder.parameters():
-                param.requires_grad = False
-            is_change_to_freeze_encoder = True
-            print("Set encoder freeze")
+#         if (training_step >= warmup_steps) and (is_change_to_freeze_encoder == False) :
+#             for param in model.audio_encoder.parameters():
+#                 param.requires_grad = False
+                
+#             is_change_to_freeze_encoder = True
+#             print("Set encoder freeze")
         
         
         if (epoch == epoch_eval_interval - 1) or (epoch == (2 * epoch_eval_interval) - 1) or (epoch == (epochs - 1)) :
             eval_model(model, test_dataloader, tokenizer, epoch, model_name, beam_search, Dataset = Dataset)
             model.train()
+            
+            if (epoch == epoch_eval_interval - 1) :
+                for param in model.audio_encoder.parameters():
+                    param.requires_grad = False
+                
+                print("Set encoder freeze")
+                
         
         param_file_path = "./Train_record/params_" + model_name + "/Param_epoch_" + str(epoch) + ".pt"
             
@@ -179,7 +179,7 @@ def eval_model_audiocaps(model, test_dataloader, tokenizer, epoch, model_name, b
     captions_pred: List[Dict] = []
     captions_gt: List[Dict] = []
     
-    for i, (audio, tokens, mask, tag, f_names) in enumerate(tqdm(test_dataloader, desc="Eval...")):
+    for i, (audio, tokens, mask, f_names) in enumerate(tqdm(test_dataloader, desc="Eval...")):
         with torch.no_grad():
             # 하나의 raw audio에 대해 5개의 caption이 등장
             
@@ -224,7 +224,7 @@ def eval_model_clotho(model, test_dataloader, tokenizer, epoch, model_name, beam
     captions_pred: List[Dict] = []
     captions_gt: List[Dict] = []
     
-    for i, (audio, tokens, mask, tag, f_names) in enumerate(tqdm(test_dataloader, desc="Eval...")):
+    for i, (audio, tokens, mask, f_names) in enumerate(tqdm(test_dataloader, desc="Eval...")):
         with torch.no_grad():
             # 하나의 raw audio에 대해 5개의 caption이 등장
 

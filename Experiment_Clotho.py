@@ -48,27 +48,30 @@ epochs = 50
 LR = 5e-5
 
 audio_prefix_size = 15
-# semantic_prefix_size = 11 # 기존의 Semantic mapping network를 사용시
-semantic_prefix_size = 10 # 새로운 Semantic mapping network를 사용시
+semantic_prefix_size = 11 
 prefix_size = audio_prefix_size + semantic_prefix_size
 
 transformer_num_layers = {"audio_num_layers" : 4 , "semantic_num_layers" : 4}
 prefix_size_dict = {"audio_prefix_size" : audio_prefix_size, "semantic_prefix_size" : semantic_prefix_size}
+mapping_network_ver = 2
 
 # argv의 개수가 2 + 1개다 : custom vocab을 사용했다
 vocab_size = None
+tokenizer_type = None
 
 if len(sys.argv) == argv_num_with_custom_tokenizer:
     vocab_size = int(sys.argv[2])
     tokenizer = tokenizer_Clotho(vocab_size)
+    tokenizer_type = 'Custom'
 # argv의 개수가 1개다 : custom vocab을 사용하지 않았다
 else :
     tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+    tokenizer_type = 'GPT2'
 
 TEST_BATCH_SIZE = 5
 TRAIN_BATCH_SIZE = 32 
-test_dataloader = dataloader_ClothoDataset(tokenizer, data_dir, TEST_BATCH_SIZE, split = 'evaluation', prefix_size = prefix_size, is_TrainDataset = False)
-train_dataloader = dataloader_ClothoDataset(tokenizer, data_dir, TEST_BATCH_SIZE, split = 'development', prefix_size = prefix_size, is_TrainDataset = True)
+test_dataloader  = dataloader_ClothoDataset(tokenizer, data_dir, TEST_BATCH_SIZE, split = 'test', prefix_size = prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
+train_dataloader = dataloader_ClothoDataset(tokenizer, data_dir, TRAIN_BATCH_SIZE, split = 'train', prefix_size = prefix_size, is_TrainDataset = True, tokenizer_type = tokenizer_type)
 
 #============실험================
 torch.cuda.empty_cache()
@@ -80,8 +83,9 @@ createDirectory(MODEL_NAME)
 USE_CUDA = torch.cuda.is_available() 
 device = torch.device('cuda:0' if USE_CUDA else 'cpu')
 
-model = get_ClipCap_AAC(tokenizer, vocab_size = vocab_size, Dataset = 'Clotho',
-                        prefix_size_dict = prefix_size_dict, transformer_num_layers = transformer_num_layers, 
+model = get_ClipCap_AAC(tokenizer, mapping_network_ver = mapping_network_ver, 
+                        vocab_size = vocab_size, Dataset = 'Clotho',
+                        prefix_size_dict = prefix_size_dict, transformer_num_layers = transformer_num_layers,
                         encoder_freeze = False, decoder_freeze = True,
                         pretrain_fromAudioCaps = True, device = device)
 
@@ -90,4 +94,5 @@ Train(model, LR, train_dataloader, test_dataloader,
     Dataset = 'Clotho')
 
 torch.cuda.empty_cache()
+
 
