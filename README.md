@@ -14,14 +14,20 @@ gdown https://drive.google.com/file/d/1O-rPXe_anLArvRG4Z3-nLdBYNO_JaFYL/view?usp
 
 ```
 
-3. **ClipCap_forAAC/pre_trained_params_from_audiocaps** 폴더로 이동합니다.
+3. **ClipCap_forAAC** 폴더로 이동합니다.
 4. 아래 명령어를 입력합니다.
 ```
-gdown https://drive.google.com/file/d/1H2MdXHu3P_ZQv6mXNvdnvz0PWJH7Lxht/view?usp=sharing --fuzzy
+gdown https://drive.google.com/file/d/15ASmIoWg0ac6qm0ixdiVwh88e8EA2MZ7/view?usp=sharing --fuzzy
 
 ```
-5. 다운로드 받은 pre_trained_params.zip을 압축해제 합니다.
-6. 압축헤제를 하면 나오는 파일 중 PreTrained_GPT2Header.pt는 ClipCap_forAAC 폴더로 이동시켜줍니다
+
+5. **ClipCap_forAAC/pre_trained_params_from_audiocaps** 폴더로 이동합니다.
+6. 아래 명령어를 입력합니다.
+```
+gdown https://drive.google.com/file/d/1aXk1I2rZ0DU45-xmzyfpgYi0jflaOrc6/view?usp=sharing --fuzzy
+
+```
+7. 다운로드 받은 Pre_trained_params.zip을 압축해제 합니다.
 
 <br>
 
