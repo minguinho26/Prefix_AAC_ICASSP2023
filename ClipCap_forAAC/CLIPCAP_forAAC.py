@@ -43,7 +43,8 @@ class TransformerMapper_forAudioFeature(nn.Module):
         
         x = self.conv(x) # [batch_size, 2048, 15, 2] -> [batch_size, 768, 15, 1]
         x = self.bn_conv(x) 
-#         x = nnf.dropout(x, p=0.2, training=self.training)
+        x = self.relu_conv(x)
+        
         
         x = torch.squeeze(x, 3) # [batch_size, 768, 15, 2] -> [batch_size, 768, 15]
         
@@ -63,11 +64,16 @@ class TransformerMapper_forAudioFeature(nn.Module):
         
         self.device = device
         self.transformer = Transformer(dim_embedding, num_head, num_layers)
+        
         # 시간대역 별로 특성을 분석
         self.conv = nn.Conv2d(2048, dim_embedding, (1, 2), stride=(1, 1), padding=(0, 0)) # [2048, 15, 2] -> [768, 15, 1]
+        torch.nn.init.kaiming_uniform_(self.conv.weight)
+        
         self.bn_conv = nn.BatchNorm2d(dim_embedding)
+        self.relu_conv = nn.ReLU()
         
         self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)
+        torch.nn.init.kaiming_uniform_(self.prefix_const)
         
         self.pos_encoder = PositionalEncoding(d_model=dim_embedding, dropout = 0.5) # positional encoding
         
@@ -88,8 +94,10 @@ class TransformerMapper_forSemanticFeature_ver_1(nn.Module):
         x = (x.unsqueeze(1)).unsqueeze(1) # [batch_size, 528] -> [batch_size, 1, 1, 528]
         x = self.conv(x) # [batch_size, 1, 1, 528] -> [batch_size, 768, 1, 11] 
         x = self.bn_conv(x)
+        x = self.relu_conv(x)
         
         x = torch.squeeze(x, 2) # [batch_size, 768, 1, 11] -> [batch_size, 768, 11]
+        
         x = x.permute(0, 2, 1).contiguous() # [batch_size, 768, 11] -> [batch_size, 11, 768]
         
         prefix = self.prefix_const.unsqueeze(0).expand(x.shape[0], *self.prefix_const.shape)
@@ -106,9 +114,13 @@ class TransformerMapper_forSemanticFeature_ver_1(nn.Module):
         self.transformer = Transformer(dim_embedding, num_head, num_layers)
         
         self.conv = nn.Conv2d(1, 768, (1, 48), stride=(1, 48), padding=(0, 0))
+        torch.nn.init.kaiming_uniform_(self.conv.weight)
+        
         self.bn_conv = nn.BatchNorm2d(dim_embedding)
+        self.relu_conv = nn.ReLU()
         
         self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)
+        torch.nn.init.kaiming_uniform_(self.prefix_const)
         
         print("semantic feature ver1's mapping network : num_head =", num_head, "num_layers =", num_layers)
 
@@ -125,10 +137,13 @@ class TransformerMapper_forSemanticFeature_ver_2(nn.Module):
         
         x = (x.unsqueeze(1)).unsqueeze(1) # [batch_size, 640] -> [batch_size, 1, 1, 640]
         x = self.conv(x) # [batch_size, 1, 1, 640] -> [batch_size, 768, 1, 11] 
-        x = self.bn_conv(x)
+        x = self.bn_conv(x) 
         
         x = torch.squeeze(x, 2) # [batch_size, 768, 1, 11] -> [batch_size, 768, 11]
-        x = x.permute(0, 2, 1).contiguous() # [batch_size, 768, 11] -> [batch_size, 11, 768]
+        
+        x = x.permute(2, 0, 1).contiguous() # [batch_size, 768, 11] -> [11, batch_size, 768]
+        x = self.pos_encoder(x) # positional encoding
+        x = x.permute(1, 0, 2).contiguous() # [11, batch_size, 768] -> [batch_size, 11, 768]
         
         prefix = self.prefix_const.unsqueeze(0).expand(x.shape[0], *self.prefix_const.shape)
         prefix = torch.cat((x, prefix), dim=1)
@@ -150,6 +165,7 @@ class TransformerMapper_forSemanticFeature_ver_2(nn.Module):
         self.conv = nn.Conv2d(1, 768, (1, 64), stride=(1, 64), padding=(0, 0))
         self.bn_conv = nn.BatchNorm2d(dim_embedding)
         
+        self.pos_encoder = PositionalEncoding(d_model=dim_embedding, dropout = 0.5) # positional encoding
         self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)
         
         print("semantic feature ver2's mapping network : num_head =", num_head, "num_layers =", num_layers)

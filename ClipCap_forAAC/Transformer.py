@@ -12,6 +12,9 @@ class MlpTransformer(nn.Module):
         self.act = act
         self.fc2 = nn.Linear(h_dim, out_d)
         self.dropout = nn.Dropout(dropout)
+        
+        torch.nn.init.kaiming_uniform_(self.fc1.weight)
+        torch.nn.init.kaiming_uniform_(self.fc2.weight)  
 
     def forward(self, x):
         x = self.fc1(x)
@@ -32,6 +35,11 @@ class MultiHeadAttention(nn.Module):
         self.to_keys_values = nn.Linear(dim_ref, dim_self * 2, bias=bias)
         self.project = nn.Linear(dim_self, dim_self)
         self.dropout = nn.Dropout(dropout)
+        
+        torch.nn.init.kaiming_uniform_(self.to_queries.weight)
+        torch.nn.init.kaiming_uniform_(self.to_keys_values.weight)
+        torch.nn.init.kaiming_uniform_(self.project.weight)
+        
 
     def forward(self, x, y=None, mask=None):
         y = y if y is not None else x

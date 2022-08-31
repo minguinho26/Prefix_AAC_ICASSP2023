@@ -14,15 +14,19 @@ class tokenizer_AudioCaps() :
     
     def encode(self, sentence) :
         
-        if self.vocab_size == 8116 :
+        if self.vocab_size == 7911 :
             sentence += '.'
+        elif self.vocab_size == 5073 :
+            sentence = re.sub(r'\s([,.!?;:"](?:\s|$))', r'\1', sentence).replace('  ', ' ')
+            sentence = re.sub('[,.!?;:\"]', ' ', sentence).replace('  ', ' ')
+            sentence = sentence.strip()
             
         word_list = sentence.split(' ')
         
         token_idx = []
         for word in word_list : 
             temp_word = word.lower()
-            if self.vocab_size == 5217 and temp_word[-1] == ',' :
+            if self.vocab_size == 5084 and temp_word[-1] == ',' :
                 temp_word_wo_rest = temp_word[:-1]
                 token_idx.append(self.vocab.index(temp_word_wo_rest))
                 token_idx.append(self.vocab.index(','))
@@ -55,10 +59,12 @@ class tokenizer_AudioCaps() :
         file_path = ''
         self.vocab_size = vocab_size
         
-        if vocab_size == 5217 :
-            file_path = './AudioCaps/AudioCaps_vocabulary_5217.pickle'
-        elif vocab_size == 8116 :
-            file_path = './AudioCaps/AudioCaps_vocabulary_8116.pickle'
+        if vocab_size == 5084 : # 마침표, 쉼표 제거 + 쉼표를 vocab에 포함(unk 반영 완)
+            file_path = './AudioCaps/AudioCaps_vocabulary_5084.pickle'
+        elif vocab_size == 7911 : # 마침표 제거 X(unk 반영 완)
+            file_path = './AudioCaps/AudioCaps_vocabulary_7911.pickle'
+        elif vocab_size == 5073 : # ACT(unk 반영 완)
+            file_path = './AudioCaps/AudioCaps_vocabulary_5073.pickle'
         
         with open(file_path, 'rb') as f:
             self.vocab = pickle.load(f) 
@@ -68,6 +74,7 @@ class AudioCaps_Dataset(Dataset):
         super(AudioCaps_Dataset, self).__init__()
         
         self.SAMPLE_RATE = 16000
+        self.split = split
         
         # data_dir 은 dataset폴더겠지?
         # dataset폴더 안에 train, test폴더 만들고 각 폴더에 .wav랑 .csv를 넣어야겠다 
@@ -86,6 +93,7 @@ class AudioCaps_Dataset(Dataset):
         
         self.path_list = []
         self.token_list = []
+        self.caption_list_for_test = []
         
         # audio의 경로, audio에 해당하는 caption을 리스트에 추가
         for file in tqdm(audio_file_list, desc = 'get dataset...') :
@@ -94,9 +102,8 @@ class AudioCaps_Dataset(Dataset):
                 
                 captions = file_row_in_csv['caption'].to_list() # test dataset은 audio 하나에 caption이 5개씩 있음
                 for caption in captions : # 1대 1 매칭 되게끔 넣어줌
-                   
                     self.path_list.append(file)
-                
+ 
                     # 문장 교정================================
                     # 마침표 제거
                     caption = re.sub(r'[.]', '', caption) 
@@ -115,18 +122,28 @@ class AudioCaps_Dataset(Dataset):
 
                     caption = caption.strip()
                     # 문장 교정================================
-
-                    if tokenizer_type == 'GPT2' :
-                        if caption[-1] != '.' :
-                            caption += '.'
-                        caption_token = tokenizer(caption)['input_ids']
-                    else :
-                        caption_token = tokenizer.encode(caption)
-                        
-                    self.token_list.append(torch.tensor(caption_token))
                     
-        self.all_len = torch.tensor([len(self.token_list[i]) for i in range(len(self.token_list))]).float()
-        self.max_seq_len = min(int(self.all_len.mean() + self.all_len.std() * 10), int(self.all_len.max()))
+                    if split == 'train' :
+                        if tokenizer_type == 'GPT2' :
+                            if caption[-1] != '.' :
+                                caption += '.'
+                            tokens = tokenizer(caption)['input_ids']
+                        else :
+                            tokens = tokenizer.encode(caption)
+
+                        self.token_list.append(torch.tensor(tokens))
+                    else :
+                        if tokenizer.vocab_size == 5073 :
+                            caption = re.sub(r'\s([,.!?;:"](?:\s|$))', r'\1', caption).replace('  ', ' ')
+                            caption = re.sub('[,.!?;:\"]', ' ', caption).replace('  ', ' ')
+                            caption = caption.strip()
+                        elif tokenizer.vocab_size == 7911 :
+                            caption += '.'
+                        
+                        self.caption_list_for_test.append(caption)
+        if split == 'train' :          
+            self.all_len = torch.tensor([len(self.token_list[i]) for i in range(len(self.token_list))]).float()
+            self.max_seq_len = min(int(self.all_len.mean() + self.all_len.std() * 10), int(self.all_len.max()))
         self.prefix_length = prefix_size # audio_prefix_length + semantic_prefix_length
             
     def __len__(self):
@@ -170,10 +187,15 @@ class AudioCaps_Dataset(Dataset):
             pad_val = torch.zeros(pad_len)
             audio_file = torch.cat((audio_file, pad_val), dim=0)
             
-        tokens, mask = self.pad_tokens(item)
-
         # raw audio, gpt2_caption, file_name 출력
-        return audio_file, tokens, mask, self.path_list[item]
+        
+        if self.split == 'train' :
+            tokens, mask = self.pad_tokens(item)
+            return audio_file, tokens, mask, self.path_list[item]
+        else :
+            return audio_file, self.caption_list_for_test[item], self.path_list[item]
+            
+            
     
 
 def dataloader_AudioCapsDataset(tokenizer, data_dir, batch_size, split, prefix_size, is_TrainDataset = False, tokenizer_type = 'GPT2') :

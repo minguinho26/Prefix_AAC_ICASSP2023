@@ -53,7 +53,7 @@ prefix_size = audio_prefix_size + semantic_prefix_size
 
 transformer_num_layers = {"audio_num_layers" : 4, "semantic_num_layers" : 4}
 prefix_size_dict = {"audio_prefix_size" : audio_prefix_size, "semantic_prefix_size" : semantic_prefix_size}
-mapping_network_ver = 2
+mapping_network_ver = 1
 
 # argv의 개수가 2개다 : custom vocab을 사용했다
 vocab_size = None
@@ -69,7 +69,7 @@ else :
     tokenizer_type = 'GPT2'
 
 TEST_BATCH_SIZE = 5
-TRAIN_BATCH_SIZE = 73
+TRAIN_BATCH_SIZE = 75
 test_dataloader  = dataloader_AudioCapsDataset(tokenizer, data_dir, TEST_BATCH_SIZE, split = 'test', prefix_size = prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
 train_dataloader = dataloader_AudioCapsDataset(tokenizer, data_dir, TRAIN_BATCH_SIZE, split = 'train', prefix_size = prefix_size, is_TrainDataset = True, tokenizer_type = tokenizer_type)
 

@@ -42,7 +42,7 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
         pbar = tqdm(train_dataloader, desc=f"Training Epoch {epoch}")
         total_loss_per_epopch = 0.0
         loss_add_count = 0.0
-        for batch_i, (audio, tokens, mask, file_name) in enumerate(pbar) :
+        for batch_i, (audio, tokens, mask, _) in enumerate(pbar) :
             
             audio = audio.to(device)
             tokens = tokens.to(device)
@@ -50,6 +50,7 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
             
             if Dataset == 'Clotho' :
                 for i in range(5) :
+                    
                     temp_tokens = tokens[:,i, :] # [16, 1, 22]
                     temp_tokens = temp_tokens.squeeze(1) # [16, 1, 22] -> [16, 22]
                     
@@ -66,17 +67,14 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
                     
                     total_loss_per_epopch += loss.item()
                     loss_add_count += 1.0
-                    
-#                     # 학습의 (1/3) 구간이 지난 시점부터 tuning에 사용할 Loss를 임의로 낮춰서 overfitting을 방지하는 건 어떨까? 
-#                     if (epoch > epoch_eval_interval - 1) :
-#                         loss /= 2.0
-                        
+
                     loss.backward()
                     optimizer.step()
                     optimizer.zero_grad()
                     training_step += 1
                 
             elif Dataset == 'AudioCaps' :
+                
                 semantic_feature, logits = model(audio, tokens, mask)
                 logits = logits[:, prefix_length - 1: -1]
                 
@@ -84,13 +82,7 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
                 
                 total_loss_per_epopch += loss.item()
                 loss_add_count += 1.0
-                
-                # Batch size를 73으로 했을 때 (2/3) 구간까지는 성능향상이 있고 나머지 (1/3) 구간에서 overfitting으로 인한 성능 하락이 있다.
-                # 그러니 나머지 (2/3) 구간에서 적용할 Loss를 줄여보는 것도 괜찮은 방법이지 않을까? 
-                # 혹은 학습의 (1/3) 구간이 지난 시점부터 tuning에 사용할 Loss를 임의로 낮춰서 overfitting을 방지하는 건 어떨까? 
-#                 if (epoch > epoch_eval_interval - 1) :
-#                     loss /= 2.0
-                
+    
                 loss.backward()
                 optimizer.step()
                 optimizer.zero_grad()
@@ -100,16 +92,6 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
             
             avr_loss = total_loss_per_epopch / loss_add_count
             pbar.set_description(f"Training Epoch {epoch}, Loss = {round(avr_loss, 5)}")
-        
-        # LR이 상승하는 구간까지만 encoder를 Trainable하게 만들자
-        # epoch 단위로 검사하기
-#         if (training_step >= warmup_steps) and (is_change_to_freeze_encoder == False) :
-#             for param in model.audio_encoder.parameters():
-#                 param.requires_grad = False
-                
-#             is_change_to_freeze_encoder = True
-#             print("Set encoder freeze")
-        
         
         if (epoch == epoch_eval_interval - 1) or (epoch == (2 * epoch_eval_interval) - 1) or (epoch == (epochs - 1)) :
             eval_model(model, test_dataloader, tokenizer, epoch, model_name, beam_search, Dataset = Dataset)
@@ -179,7 +161,7 @@ def eval_model_audiocaps(model, test_dataloader, tokenizer, epoch, model_name, b
     captions_pred: List[Dict] = []
     captions_gt: List[Dict] = []
     
-    for i, (audio, tokens, mask, f_names) in enumerate(tqdm(test_dataloader, desc="Eval...")):
+    for i, (audio, captions, f_names) in enumerate(tqdm(test_dataloader, desc="Eval...")):
         with torch.no_grad():
             # 하나의 raw audio에 대해 5개의 caption이 등장
             
@@ -193,23 +175,17 @@ def eval_model_audiocaps(model, test_dataloader, tokenizer, epoch, model_name, b
                 pred_caption = model(audio, None, beam_search = True)[0][0]
             else :
                 pred_caption = model(audio, None, beam_search = False)[0]
-           
-        caption_list = [tokenizer.decode(tokens[0]).replace('!',''),
-                            tokenizer.decode(tokens[1]).replace('!',''),
-                            tokenizer.decode(tokens[2]).replace('!',''),
-                            tokenizer.decode(tokens[3]).replace('!',''),
-                            tokenizer.decode(tokens[4]).replace('!','')]
-            
+
         captions_pred.append({
                         'file_name': f_names[0], 
                         'caption_predicted': pred_caption})
         captions_gt.append({
                         'file_name': f_names[0],
-                        'caption_1': caption_list[0],
-                        'caption_2': caption_list[1],
-                        'caption_3': caption_list[2],
-                        'caption_4': caption_list[3],
-                        'caption_5': caption_list[4]})
+                        'caption_1': captions[0].capitalize(),
+                        'caption_2': captions[1].capitalize(),
+                        'caption_3': captions[2].capitalize(),
+                        'caption_4': captions[3].capitalize(),
+                        'caption_5': captions[4].capitalize()})
     
     # 전체 측정값을 한 번에 method에 넣어서 측정
     metrics = evaluate_metrics(captions_pred, captions_gt)
