@@ -115,9 +115,9 @@ class AudioCaps_Dataset(Dataset):
                     if tokenizer.vocab_size == 5069 :
                         caption = re.sub(r'\s([,.!?;:"](?:\s|$))', r'\1', caption).replace('  ', ' ')
                         caption = re.sub('[,.!?;:\"]', ' ', caption).replace('  ', ' ')
-                    elif (tokenizer.vocab_size == 7911) or (tokenizer.vocab_size == None) or (tokenizer.vocab_size == 5084) :
+                    elif (tokenizer.vocab_size == 7911) or (tokenizer_type == 'GPT2') or (tokenizer.vocab_size == 5084) :
                         caption = re.sub(r'[.]', '', caption)
-                        if (tokenizer.vocab_size == 7911) or (tokenizer.vocab_size == None):
+                        if (tokenizer.vocab_size == 7911) or (tokenizer_type == 'GPT2'):
                             caption += '.'
                     
                     caption = caption.strip()

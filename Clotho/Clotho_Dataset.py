@@ -115,9 +115,9 @@ class ClothoDataset(Dataset):
                 if tokenizer.vocab_size == 4368 :
                     caption = re.sub(r'\s([,.!?;:"](?:\s|$))', r'\1', caption).replace('  ', ' ')
                     caption = re.sub('[,.!?;:\"]', ' ', caption).replace('  ', ' ')
-                elif (tokenizer.vocab_size == 7011) or (tokenizer.vocab_size == None) or (tokenizer.vocab_size == 4373) :
+                elif (tokenizer.vocab_size == 7011) or (tokenizer_type == 'GPT2') or (tokenizer.vocab_size == 4373) :
                     caption = re.sub(r'[.]', '', caption)
-                    if (tokenizer.vocab_size == 7011) or (tokenizer.vocab_size == None) :
+                    if (tokenizer.vocab_size == 7011) or (tokenizer_type == 'GPT2') :
                         caption += '.'
                     
                     caption = caption.strip()
