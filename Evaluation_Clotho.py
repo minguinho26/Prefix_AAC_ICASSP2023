@@ -46,14 +46,14 @@ prefix_size = audio_prefix_size + semantic_prefix_size
 
 transformer_num_layers = {"audio_num_layers" : 4 , "semantic_num_layers" : 4}
 prefix_size_dict = {"audio_prefix_size" : audio_prefix_size, "semantic_prefix_size" : semantic_prefix_size}
-mapping_network_ver = 1
+mapping_network_ver = 2
 
 # argv의 개수가 2 + 1개다 : custom vocab을 사용했다
 vocab_size = None
 tokenizer_type = None
 
 if len(sys.argv) == argv_num_with_custom_tokenizer:
-    vocab_size = int(sys.argv[3])
+    vocab_size = int(sys.argv[2])
     tokenizer = tokenizer_Clotho(vocab_size)
     tokenizer_type = 'Custom'
 # argv의 개수가 1개다 : custom vocab을 사용하지 않았다
@@ -62,7 +62,8 @@ else :
     tokenizer_type = 'GPT2'
 
 TEST_BATCH_SIZE = 5
-test_dataloader  = dataloader_ClothoDataset(tokenizer, data_dir, TEST_BATCH_SIZE, split = 'evaluation', prefix_size = prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
+test_dataloader  = dataloader_ClothoDataset(tokenizer, data_dir, 
+                    TEST_BATCH_SIZE, split = 'evaluation', prefix_size = prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
 
 USE_CUDA = torch.cuda.is_available() 
 device = torch.device('cuda:0' if USE_CUDA else 'cpu')

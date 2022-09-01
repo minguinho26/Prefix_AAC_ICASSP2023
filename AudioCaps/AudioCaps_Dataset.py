@@ -14,24 +14,17 @@ class tokenizer_AudioCaps() :
     
     def encode(self, sentence) :
         
-        if self.vocab_size == 7911 :
-            sentence += '.'
-        elif self.vocab_size == 5073 :
-            sentence = re.sub(r'\s([,.!?;:"](?:\s|$))', r'\1', sentence).replace('  ', ' ')
-            sentence = re.sub('[,.!?;:\"]', ' ', sentence).replace('  ', ' ')
-            sentence = sentence.strip()
-            
         word_list = sentence.split(' ')
         
         token_idx = []
         for word in word_list : 
-            temp_word = word.lower()
-            if self.vocab_size == 5084 and temp_word[-1] == ',' :
-                temp_word_wo_rest = temp_word[:-1]
-                token_idx.append(self.vocab.index(temp_word_wo_rest))
+
+            if self.vocab_size == 5084 and word[-1] == ',' :
+                word_wo_rest = word[:-1]
+                token_idx.append(self.vocab.index(word_wo_rest))
                 token_idx.append(self.vocab.index(','))
             else :
-                token_idx.append(self.vocab.index(temp_word))
+                token_idx.append(self.vocab.index(word))
             
         # 마지막에 <eos> 추가
         token_idx.append(13)
@@ -59,12 +52,12 @@ class tokenizer_AudioCaps() :
         file_path = ''
         self.vocab_size = vocab_size
         
-        if vocab_size == 5084 : # 마침표, 쉼표 제거 + 쉼표를 vocab에 포함(unk 반영 완)
+        if vocab_size == 5084 : # 마침표, 쉼표 제거 + 쉼표를 vocab에 포함 (with <unk> token)
             file_path = './AudioCaps/AudioCaps_vocabulary_5084.pickle'
-        elif vocab_size == 7911 : # 마침표 제거 X(unk 반영 완)
+        elif vocab_size == 7911 : # 마침표 제거 X (with <unk> token)
             file_path = './AudioCaps/AudioCaps_vocabulary_7911.pickle'
-        elif vocab_size == 5073 : # ACT(unk 반영 완)
-            file_path = './AudioCaps/AudioCaps_vocabulary_5073.pickle'
+        elif vocab_size == 5069 : # ACT에서 쓴 문장 처리만 사용 (with <unk> token)
+            file_path = './AudioCaps/AudioCaps_vocabulary_5069.pickle'
         
         with open(file_path, 'rb') as f:
             self.vocab = pickle.load(f) 
@@ -103,11 +96,10 @@ class AudioCaps_Dataset(Dataset):
                 captions = file_row_in_csv['caption'].to_list() # test dataset은 audio 하나에 caption이 5개씩 있음
                 for caption in captions : # 1대 1 매칭 되게끔 넣어줌
                     self.path_list.append(file)
- 
+                    
+                    caption = caption.lower()
+                    
                     # 문장 교정================================
-                    # 마침표 제거
-                    caption = re.sub(r'[.]', '', caption) 
-
                     # 쉼표 오류 제거
                     caption = caption.replace(',', ' , ') 
 
@@ -115,32 +107,32 @@ class AudioCaps_Dataset(Dataset):
                     caption = re.sub(' +', ' ', caption)
 
                     caption = caption.replace(' ,', ',')
-                    
+
                     # caption의 마지막이 쉼표일 경우 제거
                     if caption[-1] == ',' :
                         caption = caption[:-1]
-
+                        
+                    if tokenizer.vocab_size == 5069 :
+                        caption = re.sub(r'\s([,.!?;:"](?:\s|$))', r'\1', caption).replace('  ', ' ')
+                        caption = re.sub('[,.!?;:\"]', ' ', caption).replace('  ', ' ')
+                    elif (tokenizer.vocab_size == 7911) or (tokenizer.vocab_size == None) or (tokenizer.vocab_size == 5084) :
+                        caption = re.sub(r'[.]', '', caption)
+                        if (tokenizer.vocab_size == 7911) or (tokenizer.vocab_size == None):
+                            caption += '.'
+                    
                     caption = caption.strip()
                     # 문장 교정================================
                     
                     if split == 'train' :
                         if tokenizer_type == 'GPT2' :
-                            if caption[-1] != '.' :
-                                caption += '.'
                             tokens = tokenizer(caption)['input_ids']
                         else :
                             tokens = tokenizer.encode(caption)
 
                         self.token_list.append(torch.tensor(tokens))
                     else :
-                        if tokenizer.vocab_size == 5073 :
-                            caption = re.sub(r'\s([,.!?;:"](?:\s|$))', r'\1', caption).replace('  ', ' ')
-                            caption = re.sub('[,.!?;:\"]', ' ', caption).replace('  ', ' ')
-                            caption = caption.strip()
-                        elif tokenizer.vocab_size == 7911 :
-                            caption += '.'
-                        
                         self.caption_list_for_test.append(caption)
+                        
         if split == 'train' :          
             self.all_len = torch.tensor([len(self.token_list[i]) for i in range(len(self.token_list))]).float()
             self.max_seq_len = min(int(self.all_len.mean() + self.all_len.std() * 10), int(self.all_len.max()))

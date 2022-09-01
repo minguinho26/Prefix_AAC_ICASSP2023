@@ -100,6 +100,9 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
             if (epoch == epoch_eval_interval - 1) :
                 for param in model.audio_encoder.parameters():
                     param.requires_grad = False
+#                 # Test
+#                 for param in model.language_header.parameters():
+#                     param.requires_grad = False
                 
                 print("Set encoder freeze")
                 
@@ -200,7 +203,7 @@ def eval_model_clotho(model, test_dataloader, tokenizer, epoch, model_name, beam
     captions_pred: List[Dict] = []
     captions_gt: List[Dict] = []
     
-    for i, (audio, tokens, mask, f_names) in enumerate(tqdm(test_dataloader, desc="Eval...")):
+    for i, (audio, captions, f_names) in enumerate(tqdm(test_dataloader, desc="Eval...")):
         with torch.no_grad():
             # 하나의 raw audio에 대해 5개의 caption이 등장
 
@@ -218,22 +221,18 @@ def eval_model_clotho(model, test_dataloader, tokenizer, epoch, model_name, beam
         # [25, 5, 22] tokens를 가지고 해야함
         for j in range(tokens.size()[0]) :
             
-            caption_list = [tokenizer.decode(tokens[j, 0, :]).replace('!',''),
-                            tokenizer.decode(tokens[j, 1, :]).replace('!',''),
-                            tokenizer.decode(tokens[j, 2, :]).replace('!',''),
-                            tokenizer.decode(tokens[j, 3, :]).replace('!',''),
-                            tokenizer.decode(tokens[j, 4, :]).replace('!','')]
+            temp_captions = captions[j]
             
             captions_pred.append({
                         'file_name': f_names[j], 
                         'caption_predicted': generated_list[j]})
             captions_gt.append({
                         'file_name': f_names[j],
-                        'caption_1': caption_list[0],
-                        'caption_2': caption_list[1],
-                        'caption_3': caption_list[2],
-                        'caption_4': caption_list[3],
-                        'caption_5': caption_list[4]})
+                        'caption_1': temp_captions[0].capitalize(),
+                        'caption_2': temp_captions[1].capitalize(),
+                        'caption_3': temp_captions[2].capitalize(),
+                        'caption_4': temp_captions[3].capitalize(),
+                        'caption_5': temp_captions[4].capitalize()})
     
     # 전체 측정값을 한 번에 method에 넣어서 측정
     metrics = evaluate_metrics(captions_pred, captions_gt)

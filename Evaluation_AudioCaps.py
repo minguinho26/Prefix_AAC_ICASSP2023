@@ -61,7 +61,8 @@ else :
     tokenizer_type = 'GPT2'
 
 TEST_BATCH_SIZE = 5
-test_dataloader  = dataloader_AudioCapsDataset(tokenizer, data_dir, TEST_BATCH_SIZE, split = 'test', prefix_size = prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
+test_dataloader  = dataloader_AudioCapsDataset(tokenizer, data_dir, 
+                    TEST_BATCH_SIZE, split = 'test', prefix_size = prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
 
 USE_CUDA = torch.cuda.is_available() 
 device = torch.device('cuda:0' if USE_CUDA else 'cpu')

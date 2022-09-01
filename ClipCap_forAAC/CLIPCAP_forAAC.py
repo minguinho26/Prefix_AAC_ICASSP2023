@@ -201,6 +201,10 @@ class ClipCap_AAC(nn.Module):
                 out_hidden_states = out[0]
                 logits = self.language_header(out_hidden_states)
                 
+                if self.tokenizer.vocab_size != None :
+                    logits[:,:,0] = 0.0 # '!' token은 사용하지 않기 때문에 예측하지 않게끔 만든다
+                
+                
                 logits = logits[:, -1, :] / (temperature)
                 logits = logits.softmax(-1).log()
                 if scores is None:
@@ -281,6 +285,9 @@ class ClipCap_AAC(nn.Module):
                 out = self.gpt(inputs_embeds=generated)
                 out_hidden_states = out[0]
                 logits = self.language_header(out_hidden_states)
+                
+                if self.tokenizer.vocab_size != None :
+                    logits[:,:,0] = 0.0 # '!' token은 사용하지 않기 때문에 예측하지 않게끔 만든다
 
                 logits = logits[:, -1, :] / (temperature)
                 sorted_logits, sorted_indices = torch.sort(logits, descending=True)
@@ -329,6 +336,9 @@ class ClipCap_AAC(nn.Module):
             out_hidden_states = out[0]
             
             logits = self.language_header(out_hidden_states)
+            
+            if self.tokenizer.vocab_size != None :
+                logits[:,:,0] = 0.0 # '!' token은 사용하지 않기 때문에 예측하지 않게끔 만든다
             
             return semantic_feature, logits
         else :
