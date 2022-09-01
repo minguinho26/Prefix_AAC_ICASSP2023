@@ -219,7 +219,7 @@ def eval_model_clotho(model, test_dataloader, tokenizer, epoch, model_name, beam
                 generated_list = model(audio, None, beam_search = False)
                 
         # [25, 5, 22] tokens를 가지고 해야함
-        for j in range(tokens.size()[0]) :
+        for j in range(audio.size()[0]) :
             
             temp_captions = captions[j]
             
