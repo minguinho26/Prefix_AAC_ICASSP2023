@@ -17,7 +17,7 @@ import pickle
 USE_CUDA = torch.cuda.is_available() 
 device = torch.device('cuda:0' if USE_CUDA else 'cpu')
 
-def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model_name, beam_search, Dataset = 'AudioCaps') :
+def Train(model, LR, train_dataloader, test_dataloader, epochs, model_name, beam_search, Dataset = 'AudioCaps') :
     
     model.train()
     model.to(device)
@@ -36,7 +36,6 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
     train_start_time = time.time()
     
     training_step = 0
-    is_change_to_freeze_encoder = False
     
     for epoch in range(epochs) :
         pbar = tqdm(train_dataloader, desc=f"Training Epoch {epoch}")
@@ -94,7 +93,7 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
             pbar.set_description(f"Training Epoch {epoch}, Loss = {round(avr_loss, 5)}")
         
         if (epoch == epoch_eval_interval - 1) or (epoch == (2 * epoch_eval_interval) - 1) or (epoch == (epochs - 1)) :
-            eval_model(model, test_dataloader, tokenizer, epoch, model_name, beam_search, Dataset = Dataset)
+            eval_model(model, test_dataloader, epoch, model_name, beam_search, Dataset = Dataset)
             model.train()
             
             if (epoch == epoch_eval_interval - 1) :
@@ -118,11 +117,11 @@ def Train(model, LR, train_dataloader, test_dataloader, tokenizer, epochs, model
     print("Training time :", result_list[0])
 
 
-def eval_model(model, test_dataloader, tokenizer, epoch, model_name, beam_search, Dataset = 'AudioCaps') :
+def eval_model(model, test_dataloader, epoch, model_name, beam_search, Dataset = 'AudioCaps') :
     if Dataset == 'AudioCaps' :
-        metrics = eval_model_audiocaps(model, test_dataloader, tokenizer, epoch, model_name, beam_search)
+        metrics = eval_model_audiocaps(model, test_dataloader, epoch, model_name, beam_search)
     elif Dataset == 'Clotho' :
-        metrics = eval_model_clotho(model, test_dataloader, tokenizer, epoch, model_name, beam_search)
+        metrics = eval_model_clotho(model, test_dataloader, epoch, model_name, beam_search)
     
     total_results = {}
     total_results['BLUE_1'] = metrics['bleu_1']['score']
@@ -156,7 +155,7 @@ def eval_model(model, test_dataloader, tokenizer, epoch, model_name, beam_search
         pickle.dump(total_results, f)
     
 
-def eval_model_audiocaps(model, test_dataloader, tokenizer, epoch, model_name, beam_search) :
+def eval_model_audiocaps(model, test_dataloader, beam_search) :
     model.eval()
     model.to(device)
 
@@ -195,7 +194,7 @@ def eval_model_audiocaps(model, test_dataloader, tokenizer, epoch, model_name, b
     
     return metrics
 
-def eval_model_clotho(model, test_dataloader, tokenizer, epoch, model_name, beam_search) :
+def eval_model_clotho(model, test_dataloader, beam_search) :
     model.eval()
     model.to(device)
 
