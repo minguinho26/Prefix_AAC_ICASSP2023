@@ -183,11 +183,11 @@ def eval_model_audiocaps(model, test_dataloader, beam_search) :
                         'caption_predicted': pred_caption})
         captions_gt.append({
                         'file_name': f_names[0],
-                        'caption_1': captions[0].capitalize(),
-                        'caption_2': captions[1].capitalize(),
-                        'caption_3': captions[2].capitalize(),
-                        'caption_4': captions[3].capitalize(),
-                        'caption_5': captions[4].capitalize()})
+                        'caption_1': captions[0],
+                        'caption_2': captions[1],
+                        'caption_3': captions[2],
+                        'caption_4': captions[3],
+                        'caption_5': captions[4]})
     
     # 전체 측정값을 한 번에 method에 넣어서 측정
     metrics = evaluate_metrics(captions_pred, captions_gt)
@@ -227,11 +227,11 @@ def eval_model_clotho(model, test_dataloader, beam_search) :
                         'caption_predicted': generated_list[j]})
             captions_gt.append({
                         'file_name': f_names[j],
-                        'caption_1': temp_captions[0].capitalize(),
-                        'caption_2': temp_captions[1].capitalize(),
-                        'caption_3': temp_captions[2].capitalize(),
-                        'caption_4': temp_captions[3].capitalize(),
-                        'caption_5': temp_captions[4].capitalize()})
+                        'caption_1': temp_captions[0],
+                        'caption_2': temp_captions[1],
+                        'caption_3': temp_captions[2],
+                        'caption_4': temp_captions[3],
+                        'caption_5': temp_captions[4]})
     
     # 전체 측정값을 한 번에 method에 넣어서 측정
     metrics = evaluate_metrics(captions_pred, captions_gt)

@@ -8,6 +8,7 @@ import numpy as np
 from tqdm import tqdm
 import pickle
 import re
+import string
 
 # vocabulary만들 때 소문자로 변환만 한 경우 사용되는 tokenizer
 class tokenizer_AudioCaps() :
@@ -45,7 +46,7 @@ class tokenizer_AudioCaps() :
         
         sentence = sentence.rstrip() # 우측 공백 제거
         
-        return sentence.capitalize() # 앞글자를 대문자로 만들어줌
+        return sentence
 
     def __init__(self, vocab_size) :
         
@@ -58,6 +59,8 @@ class tokenizer_AudioCaps() :
             file_path = './AudioCaps/AudioCaps_vocabulary_7911.pickle'
         elif vocab_size == 5069 : # ACT에서 쓴 문장 처리만 사용 (with <unk> token)
             file_path = './AudioCaps/AudioCaps_vocabulary_5069.pickle'
+        elif vocab_size == 4992 : # 모든 기호 제거(=단어만 vocab에 포함)
+            file_path = './AudioCaps/AudioCaps_vocabulary_4992.pickle'  
         
         with open(file_path, 'rb') as f:
             self.vocab = pickle.load(f) 
@@ -102,15 +105,9 @@ class AudioCaps_Dataset(Dataset):
                     # 문장 교정================================
                     # 쉼표 오류 제거
                     caption = caption.replace(',', ' , ') 
-
                     # 공백 줄이기
                     caption = re.sub(' +', ' ', caption)
-
                     caption = caption.replace(' ,', ',')
-
-                    # caption의 마지막이 쉼표일 경우 제거
-                    if caption[-1] == ',' :
-                        caption = caption[:-1]
                         
                     if tokenizer.vocab_size == 5069 :
                         caption = re.sub(r'\s([,.!?;:"](?:\s|$))', r'\1', caption).replace('  ', ' ')
@@ -119,6 +116,8 @@ class AudioCaps_Dataset(Dataset):
                         caption = re.sub(r'[.]', '', caption)
                         if (tokenizer.vocab_size == 7911) or (tokenizer_type == 'GPT2'):
                             caption += '.'
+                    elif tokenizer.vocab_size == 4992 :
+                        caption = caption.translate(str.maketrans('', '', string.punctuation))
                     
                     caption = caption.strip()
                     # 문장 교정================================

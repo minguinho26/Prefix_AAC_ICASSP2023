@@ -393,10 +393,12 @@ class ClipCap_AAC(nn.Module):
         if encoder_freeze == True :
             for param in self.audio_encoder.parameters():
                 param.requires_grad = False
+            print("Encoder freezing")
         
         if decoder_freeze == True :
             for param in self.gpt.parameters():
                 param.requires_grad = False
+            print("GPT2 freezing")
         
         if pretrain_fromAudioCaps == True :
             checkpoint_path = "./ClipCap_forAAC/pre_trained_params_from_audiocaps/audio_clip_project_SOTA_in_Audiocaps.pt"
@@ -409,6 +411,10 @@ class ClipCap_AAC(nn.Module):
         if vocab_size == None : # GPT2 tokenizer를 사용할 경우, huggingface에서 제공하는 header를 사용
             header_gpt2_header_params = './ClipCap_forAAC/PreTrained_GPT2Header.pt'
             self.language_header.load_state_dict(torch.load(header_gpt2_header_params)) # Huggingface에서 사전학습된 header
+            # 실험을 위해 language header도 frezzing 해봄
+            for param in self.language_header.parameters():
+                param.requires_grad = False
+            print("Language header freezing")
             
                 
 def get_ClipCap_AAC(tokenizer, mapping_network_ver = 1, 
@@ -417,7 +423,6 @@ def get_ClipCap_AAC(tokenizer, mapping_network_ver = 1,
                     transformer_num_layers = None, encoder_freeze = True, decoder_freeze = True, 
                     pretrain_fromAudioCaps = False, device = 'cuda') :
     
-    # audio_encoder = get_audio_encoder()
     # PANNS
     audio_encoder = Cnn14(sample_rate=16000, window_size=512, 
                 hop_size=320, mel_bins=64, fmin=50, fmax=14000, 
