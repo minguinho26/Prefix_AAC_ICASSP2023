@@ -119,9 +119,9 @@ def Train(model, LR, train_dataloader, test_dataloader, epochs, model_name, beam
 
 def eval_model(model, test_dataloader, epoch, model_name, beam_search, Dataset = 'AudioCaps') :
     if Dataset == 'AudioCaps' :
-        metrics = eval_model_audiocaps(model, test_dataloader, epoch, model_name, beam_search)
+        metrics = eval_model_audiocaps(model, test_dataloader, beam_search)
     elif Dataset == 'Clotho' :
-        metrics = eval_model_clotho(model, test_dataloader, epoch, model_name, beam_search)
+        metrics = eval_model_clotho(model, test_dataloader, beam_search)
     
     total_results = {}
     total_results['BLUE_1'] = metrics['bleu_1']['score']
