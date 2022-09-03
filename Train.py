@@ -50,11 +50,11 @@ def Train(model, LR, train_dataloader, test_dataloader, epochs, model_name, beam
             if Dataset == 'Clotho' :
                 for i in range(5) :
                     
-                    temp_tokens = tokens[:,i, :] # [batch_size, 1, 22]
-                    temp_tokens = temp_tokens.squeeze(1) # [batch_size, 1, 22] -> [batch_size, 22]
+                    temp_tokens = tokens[:,i, :] # [16, 1, 22]
+                    temp_tokens = temp_tokens.squeeze(1) # [16, 1, 22] -> [16, 22]
                     
-                    temp_mask = mask[:,i, :] # [batch_size, 1, -1]
-                    temp_mask = temp_mask.squeeze(1) # [batch_size, 1, -1] -> [batch_size, -1]
+                    temp_mask = mask[:,i, :] # [16, 1, -1]
+                    temp_mask = temp_mask.squeeze(1) # [16, 1, -1] -> [16, -1]
                     
                     semantic_feature, logits = model(audio, temp_tokens, temp_mask)
                     logits = logits[:, prefix_length - 1: -1]
@@ -217,7 +217,7 @@ def eval_model_clotho(model, test_dataloader, beam_search) :
             else :
                 generated_list = model(audio, None, beam_search = False)
                 
-        # [batch_size, 5, 22] tokens를 가지고 해야함
+        # [Batch_size, 5, 22] tokens를 가지고 해야함
         for j in range(audio.size()[0]) :
             
             temp_captions = captions[j]

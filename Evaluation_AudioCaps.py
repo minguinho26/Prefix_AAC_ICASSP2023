@@ -61,8 +61,7 @@ else :
     tokenizer_type = 'GPT2'
 
 TEST_BATCH_SIZE = 5
-test_dataloader  = dataloader_AudioCapsDataset(tokenizer, data_dir, 
-                    TEST_BATCH_SIZE, split = 'test', prefix_size = prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
+test_dataloader  = dataloader_AudioCapsDataset(tokenizer, data_dir, TEST_BATCH_SIZE, split = 'test', prefix_size = prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
 
 USE_CUDA = torch.cuda.is_available() 
 device = torch.device('cuda:0' if USE_CUDA else 'cpu')
@@ -74,4 +73,4 @@ model = get_ClipCap_AAC(tokenizer, mapping_network_ver = mapping_network_ver,
                         pretrain_fromAudioCaps = False, device = device)
 
 model.load_state_dict(torch.load("./Train_record/params_" + Model_name + "_audiocaps/Param_epoch_" + str(epoch) + ".pt"))
-eval_model(model, test_dataloader, tokenizer, epoch, Model_name, True, Dataset = 'AudioCaps')
+eval_model(model, test_dataloader, epoch, Model_name, True, Dataset = 'AudioCaps')

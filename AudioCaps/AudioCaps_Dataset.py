@@ -45,7 +45,7 @@ class tokenizer_AudioCaps() :
                 sentence += self.vocab[idx] + ' '
         
         sentence = sentence.rstrip() # 우측 공백 제거
-
+        
         # 맨 마지막에 마침표 있으면 제거해주기
         if sentence[-1] == '.' :
             sentence = sentence[:-1]

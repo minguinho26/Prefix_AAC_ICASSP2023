@@ -90,7 +90,7 @@ model = get_ClipCap_AAC(tokenizer, mapping_network_ver = mapping_network_ver,
                         pretrain_fromAudioCaps = False, device = device)
 
 Train(model, LR, train_dataloader, test_dataloader,
-    tokenizer, epochs, model_name = MODEL_NAME, beam_search = True,
+    epochs, model_name = MODEL_NAME, beam_search = True,
     Dataset = 'AudioCaps')
 
 torch.cuda.empty_cache()
