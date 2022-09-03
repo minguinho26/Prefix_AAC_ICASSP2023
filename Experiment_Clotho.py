@@ -3,7 +3,6 @@ import torch
 import copy
 import os
 import sys
-from Clotho.Clotho_Dataset import tokenizer_Clotho
 
 # custom
 from Clotho.Clotho_Dataset import * # 데이터셋
@@ -53,7 +52,7 @@ prefix_size = audio_prefix_size + semantic_prefix_size
 
 transformer_num_layers = {"audio_num_layers" : 4 , "semantic_num_layers" : 4}
 prefix_size_dict = {"audio_prefix_size" : audio_prefix_size, "semantic_prefix_size" : semantic_prefix_size}
-mapping_network_ver = 2
+mapping_network_ver = 1
 
 # argv의 개수가 2 + 1개다 : custom vocab을 사용했다
 vocab_size = None
@@ -69,9 +68,9 @@ else :
     tokenizer_type = 'GPT2'
 
 TEST_BATCH_SIZE = 5
-TRAIN_BATCH_SIZE = 32 
-test_dataloader  = dataloader_ClothoDataset(tokenizer, data_dir, TEST_BATCH_SIZE, split = 'test', prefix_size = prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
-train_dataloader = dataloader_ClothoDataset(tokenizer, data_dir, TRAIN_BATCH_SIZE, split = 'train', prefix_size = prefix_size, is_TrainDataset = True, tokenizer_type = tokenizer_type)
+TRAIN_BATCH_SIZE = 49 
+test_dataloader  = dataloader_ClothoDataset(tokenizer, data_dir, TEST_BATCH_SIZE, split = 'evaluation', prefix_size = prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
+train_dataloader = dataloader_ClothoDataset(tokenizer, data_dir, TRAIN_BATCH_SIZE, split = 'development', prefix_size = prefix_size, is_TrainDataset = True, tokenizer_type = tokenizer_type)
 
 #============실험================
 torch.cuda.empty_cache()
@@ -94,6 +93,3 @@ Train(model, LR, train_dataloader, test_dataloader,
     Dataset = 'Clotho')
 
 torch.cuda.empty_cache()
-
-
-

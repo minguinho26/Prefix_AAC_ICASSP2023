@@ -46,7 +46,7 @@ prefix_size = audio_prefix_size + semantic_prefix_size
 
 transformer_num_layers = {"audio_num_layers" : 4 , "semantic_num_layers" : 4}
 prefix_size_dict = {"audio_prefix_size" : audio_prefix_size, "semantic_prefix_size" : semantic_prefix_size}
-mapping_network_ver = 2
+mapping_network_ver = 1
 
 # argv의 개수가 2 + 1개다 : custom vocab을 사용했다
 vocab_size = None

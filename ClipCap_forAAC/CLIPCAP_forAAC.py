@@ -401,20 +401,34 @@ class ClipCap_AAC(nn.Module):
             print("GPT2 freezing")
         
         if pretrain_fromAudioCaps == True :
-            checkpoint_path = "./ClipCap_forAAC/pre_trained_params_from_audiocaps/audio_clip_project_SOTA_in_Audiocaps.pt"
-            self.audio_clip_project.load_state_dict(torch.load(checkpoint_path))
+            if vocab_size == 5349 : # Custom Tokenizer2
+                folder_name = 5084
+            elif vocab_size == 7011 : # Custom Tokenizer1
+                folder_name = 7911 
+            elif vocab_size == 4368 : # Clotho Tokenizer
+                folder_name = 4992
+            elif vocab_size == None : # GPT2 Tokenizer
+                folder_name = 'GPT2'
+                  
+            audio_clip_project_pt_name = 'audio_clip_project_' + str(folder_name) + '_in_Audiocaps.pt'
+            semantic_clip_project_pt_name = 'semantic_clip_project_' + str(folder_name) + '_in_Audiocaps.pt'
             
-            checkpoint_path = "./ClipCap_forAAC/pre_trained_params_from_audiocaps/semantic_clip_project_SOTA_in_Audiocaps.pt"
-            self.semantic_clip_project.load_state_dict(torch.load(checkpoint_path))
+            audio_clip_project_path = './ClipCap_forAAC/pre_trained_params_from_audiocaps/' + \
+                                       str(folder_name) + '/' + audio_clip_project_pt_name
+            semantic_clip_project_path = './ClipCap_forAAC/pre_trained_params_from_audiocaps/' + \
+                                         str(folder_name) + '/' + semantic_clip_project_pt_name
+            
+            self.audio_clip_project.load_state_dict(torch.load(audio_clip_project_path))
+            self.semantic_clip_project.load_state_dict(torch.load(semantic_clip_project_path))
             
 
         if vocab_size == None : # GPT2 tokenizer를 사용할 경우, huggingface에서 제공하는 header를 사용
             header_gpt2_header_params = './ClipCap_forAAC/PreTrained_GPT2Header.pt'
             self.language_header.load_state_dict(torch.load(header_gpt2_header_params)) # Huggingface에서 사전학습된 header
             # 실험을 위해 language header도 frezzing 해봄
-            for param in self.language_header.parameters():
-                param.requires_grad = False
-            print("Language header freezing")
+#             for param in self.language_header.parameters():
+#                 param.requires_grad = False
+#             print("Language header freezing")
             
                 
 def get_ClipCap_AAC(tokenizer, mapping_network_ver = 1, 
@@ -433,8 +447,25 @@ def get_ClipCap_AAC(tokenizer, mapping_network_ver = 1,
         checkpoint = torch.load(checkpoint_path, map_location='cuda')
         audio_encoder.load_state_dict(checkpoint['model'])
     else :
-        checkpoint_path = "./ClipCap_forAAC/audio_encoder_SOTA_in_Audiocaps.pt"
-        audio_encoder.load_state_dict(torch.load(checkpoint_path))
+        
+        if vocab_size == 5349 : # Custom Tokenizer2
+            print("use Custom Tokenizer2")
+            folder_name = 5084
+        elif vocab_size == 7011 : # Custom Tokenizer1
+            print("use Custom Tokenizer1")
+            folder_name = 7911 
+        elif vocab_size == 4368 : # Clotho Tokenizer
+            print("use Clotho Tokenizer")
+            folder_name = 4992
+        elif vocab_size == None : # GPT2 Tokenizer
+            print("use GPT2 Tokenizer")
+            folder_name = 'GPT2'
+        
+        audio_encoder_pt_name = 'audio_encoder_' + str(folder_name) + '_in_Audiocaps.pt'
+        audio_encoder_path = './ClipCap_forAAC/pre_trained_params_from_audiocaps/'  + \
+                              str(folder_name) + '/' + audio_encoder_pt_name
+           
+        audio_encoder.load_state_dict(torch.load(audio_encoder_path))
     
     # Clotho는 30초짜리 audio를 쓰는데 ours는 10초짜리 오디오만 처리함. 
     # 그래서 30초짜리 audio로 뽑은 값을 10초짜리 오디오로 뽑은 값과 같이 압축시켜주는 module이 필요함

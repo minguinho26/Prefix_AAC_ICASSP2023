@@ -45,6 +45,10 @@ class tokenizer_AudioCaps() :
                 sentence += self.vocab[idx] + ' '
         
         sentence = sentence.rstrip() # 우측 공백 제거
+
+        # 맨 마지막에 마침표 있으면 제거해주기
+        if sentence[-1] == '.' :
+            sentence = sentence[:-1]
         
         return sentence
 
@@ -108,12 +112,19 @@ class AudioCaps_Dataset(Dataset):
                     # 공백 줄이기
                     caption = re.sub(' +', ' ', caption)
                     caption = caption.replace(' ,', ',')
-                        
+                    
+                    # 49275개의 caption 중 192개만 뒤에 마침표 있었다 
+                    # 마침표는 잚못 넣은 것으로 판단하여 마침표를 제거한다
+                    caption = re.sub(r'[.]', '', caption)
+
+                    # 문장 교정만 한 것을 넣는다(즉, 쉼표 등의 기호가 모두 포함)
+                    if split != 'train' :
+                        self.caption_list_for_test.append(caption)
+                    
                     if tokenizer.vocab_size == 5069 :
                         caption = re.sub(r'\s([,.!?;:"](?:\s|$))', r'\1', caption).replace('  ', ' ')
                         caption = re.sub('[,.!?;:\"]', ' ', caption).replace('  ', ' ')
                     elif (tokenizer.vocab_size == 7911) or (tokenizer_type == 'GPT2') or (tokenizer.vocab_size == 5084) :
-                        caption = re.sub(r'[.]', '', caption)
                         if (tokenizer.vocab_size == 7911) or (tokenizer_type == 'GPT2'):
                             caption += '.'
                     elif tokenizer.vocab_size == 4992 :
@@ -129,8 +140,6 @@ class AudioCaps_Dataset(Dataset):
                             tokens = tokenizer.encode(caption)
 
                         self.token_list.append(torch.tensor(tokens))
-                    else :
-                        self.caption_list_for_test.append(caption)
                         
         if split == 'train' :          
             self.all_len = torch.tensor([len(self.token_list[i]) for i in range(len(self.token_list))]).float()

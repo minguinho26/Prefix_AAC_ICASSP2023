@@ -19,7 +19,7 @@ class tokenizer_Clotho() :
         token_idx = []
         for word in word_list : 
 
-            if self.vocab_size == 4372 and word[-1] == ',' :
+            if self.vocab_size == 5349 and word[-1] == ',' :
                 word_wo_rest = word[:-1]
                 token_idx.append(self.vocab.index(word_wo_rest))
                 token_idx.append(self.vocab.index(','))
@@ -52,11 +52,11 @@ class tokenizer_Clotho() :
         file_path = ''
         self.vocab_size = vocab_size
         
-        if vocab_size == 4373 : # 마침표, 쉼표 제거 + 쉼표를 vocab에
-            file_path = './Clotho/Clotho_vocabulary_4373.pickle'
-        elif vocab_size == 7011 : # 소문자로만 만듬(마침표, 쉼표 제거 안함)
+        if vocab_size == 5349 : # 마침표, 쉼표 제거 + 쉼표를 vocab에 포함 (with <unk> token)
+            file_path = './Clotho/Clotho_vocabulary_5349.pickle'
+        elif vocab_size == 7011 : # 마침표 제거 X (with <unk> token)
             file_path = './Clotho/Clotho_vocabulary_7011.pickle'
-        elif vocab_size == 4368 : # ACT
+        elif vocab_size == 4368 : # ACT == Clotho (vocab이 같게 나옴. 특수문자들 다 지운 결과가 같아서 그런듯. 그럼 AudioCaps는 왜 다르지?)
             file_path = './Clotho/Clotho_vocabulary_4368.pickle'
         
         with open(file_path, 'rb') as f:
@@ -100,28 +100,28 @@ class ClothoDataset(Dataset):
                 caption = caption.lower()
                     
                 # 문장 교정================================
-                # 쉼표 오류 제거
                 caption = caption.replace(',', ' , ') 
-
                 # 공백 줄이기
                 caption = re.sub(' +', ' ', caption)
-
                 caption = caption.replace(' ,', ',')
-
-                # caption의 마지막이 쉼표일 경우 제거
-                if caption[-1] == ',' :
-                    caption = caption[:-1]
+                
+                # Clotho는 가지고 있는 caption에 있는 모든 문장기호를 제거했다
+                # 혹시나 마침표가 들어있는 경우 처리해준다
+                caption = re.sub(r'[.]', '', caption)
+                
+                if split != 'development' :
+                    caption_list_each_audio_for_test.append(caption)
                         
                 if tokenizer.vocab_size == 4368 :
                     caption = re.sub(r'\s([,.!?;:"](?:\s|$))', r'\1', caption).replace('  ', ' ')
                     caption = re.sub('[,.!?;:\"]', ' ', caption).replace('  ', ' ')
-                elif (tokenizer.vocab_size == 7011) or (tokenizer_type == 'GPT2') or (tokenizer.vocab_size == 4373) :
+                elif (tokenizer.vocab_size == 7011) or (tokenizer_type == 'GPT2') or (tokenizer.vocab_size == 5349) :
                     caption = re.sub(r'[.]', '', caption)
-                    if (tokenizer.vocab_size == 7011) or (tokenizer_type == 'GPT2') :
+                    if (tokenizer.vocab_size == 7011) or (tokenizer_type == 'GPT2'):
                         caption += '.'
                     
-                    caption = caption.strip()
-                    # 문장 교정================================
+                caption = caption.strip()
+                # 문장 교정================================
                 
                 if split == 'development' :
                     if tokenizer_type == 'GPT2' :
@@ -131,8 +131,7 @@ class ClothoDataset(Dataset):
 
                     token_list_inEachAudio.append(tokens)
                     all_audio_token_list.append(tokens)
-                else :
-                    caption_list_each_audio_for_test.append(caption)
+
             
             if split == 'development' :
                 self.token_list.append(token_list_inEachAudio)  
@@ -206,7 +205,7 @@ class ClothoDataset(Dataset):
 
 def dataloader_ClothoDataset(tokenizer, data_dir, batch_size, split, prefix_size, is_TrainDataset = False, tokenizer_type = 'GPT2') :
     
-    dataset = ClothoDataset(tokenizer, data_dir, split, prefix_size, tokenizer_type = 'GPT2')
+    dataset = ClothoDataset(tokenizer, data_dir, split, prefix_size, tokenizer_type = tokenizer_type)
     
     if is_TrainDataset == True :
         is_shuffle = True
