@@ -96,13 +96,10 @@ def Train(model, LR, train_dataloader, test_dataloader, epochs, model_name, beam
             eval_model(model, test_dataloader, epoch, model_name, beam_search, Dataset = Dataset)
             model.train()
             
-            if (epoch == epoch_eval_interval - 1) :
+            if (epoch == epoch_eval_interval - 1) and Dataset == 'AudioCaps' :
                 for param in model.audio_encoder.parameters():
                     param.requires_grad = False
-#                 # Test
-#                 for param in model.language_header.parameters():
-#                     param.requires_grad = False
-                
+
                 print("Set encoder freeze")
                 
         

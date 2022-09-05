@@ -68,7 +68,7 @@ else :
     tokenizer_type = 'GPT2'
 
 TEST_BATCH_SIZE = 5
-TRAIN_BATCH_SIZE = 49 
+TRAIN_BATCH_SIZE = 34 
 test_dataloader  = dataloader_ClothoDataset(tokenizer, data_dir, TEST_BATCH_SIZE, split = 'evaluation', prefix_size = prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
 train_dataloader = dataloader_ClothoDataset(tokenizer, data_dir, TRAIN_BATCH_SIZE, split = 'development', prefix_size = prefix_size, is_TrainDataset = True, tokenizer_type = tokenizer_type)
 
@@ -85,7 +85,7 @@ device = torch.device('cuda:0' if USE_CUDA else 'cpu')
 model = get_ClipCap_AAC(tokenizer, mapping_network_ver = mapping_network_ver, 
                         vocab_size = vocab_size, Dataset = 'Clotho',
                         prefix_size_dict = prefix_size_dict, transformer_num_layers = transformer_num_layers,
-                        encoder_freeze = False, decoder_freeze = True,
+                        encoder_freeze = True, decoder_freeze = True,
                         pretrain_fromAudioCaps = True, device = device)
 
 Train(model, LR, train_dataloader, test_dataloader, 

@@ -350,7 +350,7 @@ class ClipCap_AAC(nn.Module):
 
     def __init__(self, audio_encoder, tokenizer, mapping_network_ver,
                  encoder_freeze = True, decoder_freeze = True, 
-                 vocab_size = None,
+                 vocab_size = None, Dataset = 'AudioCaps', 
                  prefix_size_dict = {"audio_prefix_size" : 10, "semantic_prefix_size" : 10}, 
                  audio_num_layers = 2, semantic_num_layers = 2,
                  pretrain_fromAudioCaps = False, device = 'cuda'):
@@ -394,6 +394,9 @@ class ClipCap_AAC(nn.Module):
             for param in self.audio_encoder.parameters():
                 param.requires_grad = False
             print("Encoder freezing")
+            # Clotho를 사용하는 경우, encoder를 freezing해도 compress_feature는 학습 가능하게 만들어준다
+            if Dataset == 'Clotho' :
+                self.audio_encoder.compress_feature.weight.requires_grad = True
         
         if decoder_freeze == True :
             for param in self.gpt.parameters():
@@ -401,7 +404,7 @@ class ClipCap_AAC(nn.Module):
             print("GPT2 freezing")
         
         if pretrain_fromAudioCaps == True :
-            if vocab_size == 5349 : # Custom Tokenizer2
+            if vocab_size == 4373 : # Custom Tokenizer2
                 folder_name = 5084
             elif vocab_size == 7011 : # Custom Tokenizer1
                 folder_name = 7911 
@@ -448,7 +451,7 @@ def get_ClipCap_AAC(tokenizer, mapping_network_ver = 1,
         audio_encoder.load_state_dict(checkpoint['model'])
     else :
         
-        if vocab_size == 5349 : # Custom Tokenizer2
+        if vocab_size == 4373 : # Custom Tokenizer2
             print("use Custom Tokenizer2")
             folder_name = 5084
         elif vocab_size == 7011 : # Custom Tokenizer1
@@ -480,7 +483,7 @@ def get_ClipCap_AAC(tokenizer, mapping_network_ver = 1,
 
     model = ClipCap_AAC(audio_encoder, tokenizer, mapping_network_ver,
                         encoder_freeze, decoder_freeze, 
-                        vocab_size, 
+                        vocab_size, Dataset,
                         prefix_size_dict = prefix_size_dict, 
                         audio_num_layers = audio_num_layers, semantic_num_layers = semantic_num_layers, 
                         pretrain_fromAudioCaps = pretrain_fromAudioCaps, device = device)

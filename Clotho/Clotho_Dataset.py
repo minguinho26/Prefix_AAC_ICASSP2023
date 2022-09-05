@@ -8,6 +8,7 @@ import numpy as np
 from tqdm import tqdm
 import pickle
 import re
+import string
 
 # vocabulary만들 때 소문자로 변환만 한 경우 사용되는 tokenizer
 class tokenizer_Clotho() :
@@ -19,7 +20,7 @@ class tokenizer_Clotho() :
         token_idx = []
         for word in word_list : 
 
-            if self.vocab_size == 5349 and word[-1] == ',' :
+            if self.vocab_size == 4373 and word[-1] == ',' :
                 word_wo_rest = word[:-1]
                 token_idx.append(self.vocab.index(word_wo_rest))
                 token_idx.append(self.vocab.index(','))
@@ -45,18 +46,22 @@ class tokenizer_Clotho() :
         
         sentence = sentence.rstrip() # 우측 공백 제거
         
-        return sentence.capitalize() # 앞글자를 대문자로 만들어줌
+        # 맨 마지막에 마침표 있으면 제거해주기
+        if sentence[-1] == '.' :
+            sentence = sentence[:-1]
+        
+        return sentence # 앞글자를 대문자로 만들어줌
 
     def __init__(self, vocab_size) :
         
         file_path = ''
         self.vocab_size = vocab_size
         
-        if vocab_size == 5349 : # 마침표, 쉼표 제거 + 쉼표를 vocab에 포함 (with <unk> token)
-            file_path = './Clotho/Clotho_vocabulary_5349.pickle'
+        if vocab_size == 4373 : # 마침표, 쉼표 제거 + 쉼표를 vocab에 포함 (with <unk> token)
+            file_path = './Clotho/Clotho_vocabulary_4373.pickle'
         elif vocab_size == 7011 : # 마침표 제거 X (with <unk> token)
             file_path = './Clotho/Clotho_vocabulary_7011.pickle'
-        elif vocab_size == 4368 : # ACT == Clotho (vocab이 같게 나옴. 특수문자들 다 지운 결과가 같아서 그런듯. 그럼 AudioCaps는 왜 다르지?)
+        elif vocab_size == 4368 : # Clotho == ACT, [walkietalkie walkie-talkie] 말고 구성요소는 다 똑같음 (index별 값도 다 똑같음)
             file_path = './Clotho/Clotho_vocabulary_4368.pickle'
         
         with open(file_path, 'rb') as f:
@@ -113,9 +118,8 @@ class ClothoDataset(Dataset):
                     caption_list_each_audio_for_test.append(caption)
                         
                 if tokenizer.vocab_size == 4368 :
-                    caption = re.sub(r'\s([,.!?;:"](?:\s|$))', r'\1', caption).replace('  ', ' ')
-                    caption = re.sub('[,.!?;:\"]', ' ', caption).replace('  ', ' ')
-                elif (tokenizer.vocab_size == 7011) or (tokenizer_type == 'GPT2') or (tokenizer.vocab_size == 5349) :
+                    caption = caption.translate(str.maketrans('', '', string.punctuation))
+                elif (tokenizer.vocab_size == 7011) or (tokenizer_type == 'GPT2') or (tokenizer.vocab_size == 4373) :
                     caption = re.sub(r'[.]', '', caption)
                     if (tokenizer.vocab_size == 7011) or (tokenizer_type == 'GPT2'):
                         caption += '.'
