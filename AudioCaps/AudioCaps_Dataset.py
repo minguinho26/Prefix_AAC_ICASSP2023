@@ -63,7 +63,7 @@ class tokenizer_AudioCaps() :
             file_path = './AudioCaps/AudioCaps_vocabulary_7911.pickle'
         elif vocab_size == 5069 : # ACT에서 쓴 문장 처리만 사용 (with <unk> token)
             file_path = './AudioCaps/AudioCaps_vocabulary_5069.pickle'
-        elif vocab_size == 4992 : # 모든 기호 제거(=단어만 vocab에 포함)
+        elif vocab_size == 4992 : # 모든 기호 제거(=단어만 vocab에 포함) (with <unk> token)
             file_path = './AudioCaps/AudioCaps_vocabulary_4992.pickle'  
         
         with open(file_path, 'rb') as f:

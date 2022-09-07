@@ -43,7 +43,9 @@ class TransformerMapper_forAudioFeature(nn.Module):
         
         x = self.conv(x) # [batch_size, 2048, 15, 2] -> [batch_size, 768, 15, 1]
         x = self.bn_conv(x) 
-        x = self.relu_conv(x)
+        
+        if self.Dataset == 'AudioCaps' :
+            x = self.relu_conv(x)
         
         
         x = torch.squeeze(x, 3) # [batch_size, 768, 15, 2] -> [batch_size, 768, 15]
@@ -58,22 +60,25 @@ class TransformerMapper_forAudioFeature(nn.Module):
         out = self.transformer(prefix)[:, self.clip_length:]
         return out
 
-    def __init__(self, dim_embedding: int, prefix_length: int, clip_length: int, num_layers: int = 8, device = 'cuda'):
+    def __init__(self, dim_embedding: int, prefix_length: int, clip_length: int, num_layers: int = 8, device = 'cuda', Dataset = 'AudioCaps'):
         super(TransformerMapper_forAudioFeature, self).__init__()
-        self.clip_length = clip_length
         
+        self.Dataset = Dataset
+        
+        self.clip_length = clip_length
+
         self.device = device
         self.transformer = Transformer(dim_embedding, num_head, num_layers)
         
         # 시간대역 별로 특성을 분석
         self.conv = nn.Conv2d(2048, dim_embedding, (1, 2), stride=(1, 1), padding=(0, 0)) # [2048, 15, 2] -> [768, 15, 1]
-        torch.nn.init.kaiming_uniform_(self.conv.weight)
+#         torch.nn.init.kaiming_uniform_(self.conv.weight)
         
         self.bn_conv = nn.BatchNorm2d(dim_embedding)
         self.relu_conv = nn.ReLU()
         
         self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)
-        torch.nn.init.kaiming_uniform_(self.prefix_const)
+#         torch.nn.init.kaiming_uniform_(self.prefix_const)
         
         self.pos_encoder = PositionalEncoding(d_model=dim_embedding, dropout = 0.5) # positional encoding
         
@@ -94,7 +99,9 @@ class TransformerMapper_forSemanticFeature_ver_1(nn.Module):
         x = (x.unsqueeze(1)).unsqueeze(1) # [batch_size, 528] -> [batch_size, 1, 1, 528]
         x = self.conv(x) # [batch_size, 1, 1, 528] -> [batch_size, 768, 1, 11] 
         x = self.bn_conv(x)
-        x = self.relu_conv(x)
+        
+        if self.Dataset == 'AudioCaps' :
+            x = self.relu_conv(x)
         
         x = torch.squeeze(x, 2) # [batch_size, 768, 1, 11] -> [batch_size, 768, 11]
         
@@ -105,22 +112,23 @@ class TransformerMapper_forSemanticFeature_ver_1(nn.Module):
         out = self.transformer(prefix)[:, self.clip_length:]
         return out
 
-    def __init__(self, dim_embedding: int, prefix_length: int, clip_length: int, num_layers : int = 8, device = 'cuda'):
+    def __init__(self, dim_embedding: int, prefix_length: int, clip_length: int, num_layers : int = 8, device = 'cuda', Dataset = 'AudioCaps'):
         super(TransformerMapper_forSemanticFeature_ver_1, self).__init__()
 
         self.device = device
+        self.Dataset = Dataset
 
         self.clip_length = clip_length
         self.transformer = Transformer(dim_embedding, num_head, num_layers)
         
         self.conv = nn.Conv2d(1, 768, (1, 48), stride=(1, 48), padding=(0, 0))
-        torch.nn.init.kaiming_uniform_(self.conv.weight)
+#         torch.nn.init.kaiming_uniform_(self.conv.weight)
         
         self.bn_conv = nn.BatchNorm2d(dim_embedding)
         self.relu_conv = nn.ReLU()
         
         self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)
-        torch.nn.init.kaiming_uniform_(self.prefix_const)
+#         torch.nn.init.kaiming_uniform_(self.prefix_const)
         
         print("semantic feature ver1's mapping network : num_head =", num_head, "num_layers =", num_layers)
 
@@ -378,17 +386,17 @@ class ClipCap_AAC(nn.Module):
 
         self.audio_clip_project = TransformerMapper_forAudioFeature(dim_embedding = self.gpt_embedding_size, 
                                     prefix_length = self.audio_prefix_length, clip_length = audio_clip_length, 
-                                    num_layers = audio_num_layers, device = device)   
+                                    num_layers = audio_num_layers, device = device, Dataset = Dataset)   
         
         # mapping network의 version을 선택
         if mapping_network_ver == 1 :
             self.semantic_clip_project = TransformerMapper_forSemanticFeature_ver_1(dim_embedding = self.gpt_embedding_size, 
                                             prefix_length = self.semantic_prefix_length, clip_length = semantic_clip_length, 
-                                            num_layers = semantic_num_layers, device = device)
+                                            num_layers = semantic_num_layers, device = device, Dataset = Dataset)
         elif mapping_network_ver == 2 :
             self.semantic_clip_project = TransformerMapper_forSemanticFeature_ver_2(dim_embedding = self.gpt_embedding_size, 
                                             prefix_length = self.semantic_prefix_length, clip_length = semantic_clip_length, 
-                                            num_layers = semantic_num_layers, device = device)
+                                            num_layers = semantic_num_layers, device = device, Dataset = Dataset)
             
         if encoder_freeze == True :
             for param in self.audio_encoder.parameters():

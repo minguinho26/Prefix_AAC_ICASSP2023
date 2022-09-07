@@ -85,7 +85,7 @@ device = torch.device('cuda:0' if USE_CUDA else 'cpu')
 model = get_ClipCap_AAC(tokenizer, mapping_network_ver = mapping_network_ver, 
                         vocab_size = vocab_size, Dataset = 'Clotho',
                         prefix_size_dict = prefix_size_dict, transformer_num_layers = transformer_num_layers,
-                        encoder_freeze = True, decoder_freeze = True,
+                        encoder_freeze = False, decoder_freeze = True,
                         pretrain_fromAudioCaps = True, device = device)
 
 Train(model, LR, train_dataloader, test_dataloader, 
