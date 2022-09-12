@@ -117,13 +117,7 @@ class Cnn14(nn.Module):
         self.fc1 = nn.Linear(2048, 2048, bias=True)
         self.fc_audioset = nn.Linear(2048, classes_num, bias=True)
         
-        self.compress_feature = None 
-        
         self.init_weight()
-        
-    def add_compress_feature(self) : 
-        # [46, 2] -> [15, 2]
-        self.compress_feature = nn.Conv2d(2048, 2048, (3, 1), stride=(3, 1), padding=(0, 0))
 
     def init_weight(self):
         init_bn(self.bn0)
@@ -149,7 +143,7 @@ class Cnn14(nn.Module):
             x = do_mixup(x, mixup_lambda)
         
         x = self.conv_block1(x, pool_size=(2, 2), pool_type='avg')
-        x = F.dropout(x, p=0.2, training=self.training)
+        x = F.dropout(x, p=0.2, training=self.training) 
         x = self.conv_block2(x, pool_size=(2, 2), pool_type='avg')
         x = F.dropout(x, p=0.2, training=self.training)
         x = self.conv_block3(x, pool_size=(2, 2), pool_type='avg')
@@ -173,9 +167,5 @@ class Cnn14(nn.Module):
         x = F.relu_(self.fc1(x))
         embedding = F.dropout(x, p=0.5, training=self.training)
         semantic_feature = torch.sigmoid(self.fc_audioset(x))
-        
-        # [-1, 2048, 46, 2] -> [-1, 2048, 15, 2]로 변경(만약 압축해야할 경우)
-        if self.compress_feature is not None :
-            audio_feature = self.compress_feature(audio_feature)
         
         return audio_feature, semantic_feature

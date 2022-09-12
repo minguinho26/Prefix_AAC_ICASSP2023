@@ -72,13 +72,13 @@ class TransformerMapper_forAudioFeature(nn.Module):
         
         # 시간대역 별로 특성을 분석
         self.conv = nn.Conv2d(2048, dim_embedding, (1, 2), stride=(1, 1), padding=(0, 0)) # [2048, 15, 2] -> [768, 15, 1]
-#         torch.nn.init.kaiming_uniform_(self.conv.weight)
+        torch.nn.init.kaiming_uniform_(self.conv.weight)
         
         self.bn_conv = nn.BatchNorm2d(dim_embedding)
         self.relu_conv = nn.ReLU()
         
         self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)
-#         torch.nn.init.kaiming_uniform_(self.prefix_const)
+        torch.nn.init.kaiming_uniform_(self.prefix_const)
         
         self.pos_encoder = PositionalEncoding(d_model=dim_embedding, dropout = 0.5) # positional encoding
         
@@ -86,7 +86,7 @@ class TransformerMapper_forAudioFeature(nn.Module):
         
         
 # 527-d vector를 받음
-class TransformerMapper_forSemanticFeature_ver_1(nn.Module):
+class TransformerMapper_forSemanticFeature(nn.Module):
 
     def forward(self, x):
         
@@ -113,7 +113,7 @@ class TransformerMapper_forSemanticFeature_ver_1(nn.Module):
         return out
 
     def __init__(self, dim_embedding: int, prefix_length: int, clip_length: int, num_layers : int = 8, device = 'cuda', Dataset = 'AudioCaps'):
-        super(TransformerMapper_forSemanticFeature_ver_1, self).__init__()
+        super(TransformerMapper_forSemanticFeature, self).__init__()
 
         self.device = device
         self.Dataset = Dataset
@@ -122,61 +122,16 @@ class TransformerMapper_forSemanticFeature_ver_1(nn.Module):
         self.transformer = Transformer(dim_embedding, num_head, num_layers)
         
         self.conv = nn.Conv2d(1, 768, (1, 48), stride=(1, 48), padding=(0, 0))
-#         torch.nn.init.kaiming_uniform_(self.conv.weight)
+        torch.nn.init.kaiming_uniform_(self.conv.weight)
         
         self.bn_conv = nn.BatchNorm2d(dim_embedding)
         self.relu_conv = nn.ReLU()
         
         self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)
-#         torch.nn.init.kaiming_uniform_(self.prefix_const)
+        torch.nn.init.kaiming_uniform_(self.prefix_const)
         
-        print("semantic feature ver1's mapping network : num_head =", num_head, "num_layers =", num_layers)
+        print("semantic feature ver's mapping network : num_head =", num_head, "num_layers =", num_layers)
 
-class TransformerMapper_forSemanticFeature_ver_2(nn.Module):
-    
-    def forward(self, x):
-        
-        # 받은 vector는 527 종류의 오디오가 각각 얼마나 있는지 나타낸 값이다
-        # 얘를 640차원의 벡터로 만든다. 즉, [1, 1, 704] 크기의 feature map이 만들어진다. 얘를 conv2d로 분석해서 [768, 1, 11]으로 만들어준다
-        # 그리고 [768, 11]으로 줄인 뒤 permute 해서 [10, 768]로 만들어준다. 그러면 768개의 차원의 가진 token 10개가 된다
-        
-        x = self.linear(x) # [batch_size, 527] -> [batch_size, 704]
-        x = self.bn_linear(x)
-        
-        x = (x.unsqueeze(1)).unsqueeze(1) # [batch_size, 640] -> [batch_size, 1, 1, 640]
-        x = self.conv(x) # [batch_size, 1, 1, 640] -> [batch_size, 768, 1, 11] 
-        x = self.bn_conv(x) 
-        
-        x = torch.squeeze(x, 2) # [batch_size, 768, 1, 11] -> [batch_size, 768, 11]
-        
-        x = x.permute(2, 0, 1).contiguous() # [batch_size, 768, 11] -> [11, batch_size, 768]
-        x = self.pos_encoder(x) # positional encoding
-        x = x.permute(1, 0, 2).contiguous() # [11, batch_size, 768] -> [batch_size, 11, 768]
-        
-        prefix = self.prefix_const.unsqueeze(0).expand(x.shape[0], *self.prefix_const.shape)
-        prefix = torch.cat((x, prefix), dim=1)
-        out = self.transformer(prefix)[:, self.clip_length:]
-        return out
-
-    def __init__(self, dim_embedding: int, prefix_length: int, clip_length: int, num_layers : int = 8, device = 'cuda'):
-        super(TransformerMapper_forSemanticFeature_ver_2, self).__init__()
-
-        self.device = device
-
-        self.clip_length = clip_length
-        self.transformer = Transformer(dim_embedding, num_head, num_layers)
-        
-        
-        self.linear = nn.Linear(527, 704)
-        self.bn_linear = nn.BatchNorm1d(704)
-        
-        self.conv = nn.Conv2d(1, 768, (1, 64), stride=(1, 64), padding=(0, 0))
-        self.bn_conv = nn.BatchNorm2d(dim_embedding)
-        
-        self.pos_encoder = PositionalEncoding(d_model=dim_embedding, dropout = 0.5) # positional encoding
-        self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)
-        
-        print("semantic feature ver2's mapping network : num_head =", num_head, "num_layers =", num_layers)
 
 class ClipCap_AAC(nn.Module):
 
@@ -326,7 +281,21 @@ class ClipCap_AAC(nn.Module):
             generated_list.append(output_text)
         return generated_list 
     
+    def compress_audio(self, audio, set_length = 10) :
+        
+        ratio = audio.size()[1]/(self.SAMPLE_RATE * set_length)
+        
+        compress_idx_list = []
+        
+        for idx in range(self.SAMPLE_RATE * set_length) :
+            compress_idx_list.append(int(ratio * idx))
+        
+        return audio[:, compress_idx_list]
+    
     def forward(self, audio, tokens = None, mask = None, labels = None, beam_search = False):
+        
+        if self.Dataset == 'Clotho' :
+            audio = self.compress_audio(audio)
         
         audio_feature, semantic_feature = self.audio_encoder(audio)
         
@@ -334,7 +303,7 @@ class ClipCap_AAC(nn.Module):
         
         semantic_prefix_projections = self.semantic_clip_project(semantic_feature).view(-1, self.semantic_prefix_length, self.gpt_embedding_size)
         
-                
+
         prefix_projections = torch.cat((audio_prefix_projections, semantic_prefix_projections), dim=1) # 기존 제안
         if self.training :
             embedding_text = self.gpt.wte(tokens.to(self.device))
@@ -348,7 +317,7 @@ class ClipCap_AAC(nn.Module):
             if self.tokenizer.vocab_size != None :
                 logits[:,:,0] = 0.0 # '!' token은 사용하지 않기 때문에 예측하지 않게끔 만든다
             
-            return semantic_feature, logits
+            return logits
         else :
             if beam_search == True :
                 return self.generate_beam(prefix_projections)
@@ -356,7 +325,7 @@ class ClipCap_AAC(nn.Module):
                 return self.generate(prefix_projections)
             
 
-    def __init__(self, audio_encoder, tokenizer, mapping_network_ver,
+    def __init__(self, audio_encoder, tokenizer,
                  encoder_freeze = True, decoder_freeze = True, 
                  vocab_size = None, Dataset = 'AudioCaps', 
                  prefix_size_dict = {"audio_prefix_size" : 10, "semantic_prefix_size" : 10}, 
@@ -365,7 +334,10 @@ class ClipCap_AAC(nn.Module):
         
         super(ClipCap_AAC, self).__init__()
         self.device = device
+        self.Dataset = Dataset
         self.vocab_size = vocab_size
+        self.SAMPLE_RATE = 16000
+        
         self.audio_prefix_length = prefix_size_dict["audio_prefix_size"]
         self.semantic_prefix_length = prefix_size_dict["semantic_prefix_size"]
         
@@ -376,11 +348,6 @@ class ClipCap_AAC(nn.Module):
         self.tokenizer = tokenizer
         self.audio_encoder = audio_encoder
         self.gpt = GPT2Model.from_pretrained("gpt2")
-        
-        if vocab_size == None :
-            self.language_header = nn.Linear(768, 50257, bias=False) # 50257 : GPT2에서 쓰던 vocab의 사이즈
-        else :
-            self.language_header = nn.Linear(768, vocab_size, bias=False) # vocab_size : custom vocabulary의 사이즈
 
         self.gpt_embedding_size = self.gpt.wte.weight.shape[1] # 768
 
@@ -388,29 +355,20 @@ class ClipCap_AAC(nn.Module):
                                     prefix_length = self.audio_prefix_length, clip_length = audio_clip_length, 
                                     num_layers = audio_num_layers, device = device, Dataset = Dataset)   
         
-        # mapping network의 version을 선택
-        if mapping_network_ver == 1 :
-            self.semantic_clip_project = TransformerMapper_forSemanticFeature_ver_1(dim_embedding = self.gpt_embedding_size, 
+        self.semantic_clip_project = TransformerMapper_forSemanticFeature(dim_embedding = self.gpt_embedding_size, 
                                             prefix_length = self.semantic_prefix_length, clip_length = semantic_clip_length, 
                                             num_layers = semantic_num_layers, device = device, Dataset = Dataset)
-        elif mapping_network_ver == 2 :
-            self.semantic_clip_project = TransformerMapper_forSemanticFeature_ver_2(dim_embedding = self.gpt_embedding_size, 
-                                            prefix_length = self.semantic_prefix_length, clip_length = semantic_clip_length, 
-                                            num_layers = semantic_num_layers, device = device, Dataset = Dataset)
+        
+        self.language_header = None
+        
+        if vocab_size == None : # GPT2 tokenizer를 사용할 경우, huggingface에서 제공하는 header를 사용 
+            self.language_header = nn.Linear(768, 50257, bias=False) # 50257 : GPT2에서 쓰던 vocab의 사이즈
+            header_gpt2_header_params = './ClipCap_forAAC/PreTrained_GPT2Header.pt'
+            self.language_header.load_state_dict(torch.load(header_gpt2_header_params)) # Huggingface에서 사전학습된 header
+        else :
+            self.language_header = nn.Linear(768, vocab_size, bias=False) # vocab_size : custom vocabulary의 사이즈
+            torch.nn.init.kaiming_uniform_(self.language_header.weight)   
             
-        if encoder_freeze == True :
-            for param in self.audio_encoder.parameters():
-                param.requires_grad = False
-            print("Encoder freezing")
-            # Clotho를 사용하는 경우, encoder를 freezing해도 compress_feature는 학습 가능하게 만들어준다
-            if Dataset == 'Clotho' :
-                self.audio_encoder.compress_feature.weight.requires_grad = True
-        
-        if decoder_freeze == True :
-            for param in self.gpt.parameters():
-                param.requires_grad = False
-            print("GPT2 freezing")
-        
         if pretrain_fromAudioCaps == True :
             if vocab_size == 4373 : # Custom Tokenizer2
                 folder_name = 5084
@@ -423,7 +381,7 @@ class ClipCap_AAC(nn.Module):
                   
             audio_clip_project_pt_name = 'audio_clip_project_' + str(folder_name) + '_in_Audiocaps.pt'
             semantic_clip_project_pt_name = 'semantic_clip_project_' + str(folder_name) + '_in_Audiocaps.pt'
-            
+
             audio_clip_project_path = './ClipCap_forAAC/pre_trained_params_from_audiocaps/' + \
                                        str(folder_name) + '/' + audio_clip_project_pt_name
             semantic_clip_project_path = './ClipCap_forAAC/pre_trained_params_from_audiocaps/' + \
@@ -431,18 +389,19 @@ class ClipCap_AAC(nn.Module):
             
             self.audio_clip_project.load_state_dict(torch.load(audio_clip_project_path))
             self.semantic_clip_project.load_state_dict(torch.load(semantic_clip_project_path))
+        
+        if encoder_freeze == True :
+            for param in self.audio_encoder.parameters():
+                param.requires_grad = False
+            print("Encoder freezing")
             
-
-        if vocab_size == None : # GPT2 tokenizer를 사용할 경우, huggingface에서 제공하는 header를 사용
-            header_gpt2_header_params = './ClipCap_forAAC/PreTrained_GPT2Header.pt'
-            self.language_header.load_state_dict(torch.load(header_gpt2_header_params)) # Huggingface에서 사전학습된 header
-            # 실험을 위해 language header도 frezzing 해봄
-#             for param in self.language_header.parameters():
-#                 param.requires_grad = False
-#             print("Language header freezing")
+        if decoder_freeze == True :
+            for param in self.gpt.parameters():
+                param.requires_grad = False
+            print("GPT2 freezing")
             
                 
-def get_ClipCap_AAC(tokenizer, mapping_network_ver = 1, 
+def get_ClipCap_AAC(tokenizer, 
                     vocab_size = None, Dataset = 'AudioCaps',
                     prefix_size_dict = {"audio_prefix_size" : 10, "semantic_prefix_size" : 10}, 
                     transformer_num_layers = None, encoder_freeze = True, decoder_freeze = True, 
@@ -453,43 +412,36 @@ def get_ClipCap_AAC(tokenizer, mapping_network_ver = 1,
                 hop_size=320, mel_bins=64, fmin=50, fmax=14000, 
                 classes_num=527)
     
+    if vocab_size == 4373 : # Custom Tokenizer2
+        print("use Custom Tokenizer2")
+        folder_name = 5084
+    elif vocab_size == 7011 : # Custom Tokenizer1
+        print("use Custom Tokenizer1")
+        folder_name = 7911 
+    elif vocab_size == 4368 : # Clotho Tokenizer
+        print("use Clotho Tokenizer")
+        folder_name = 4992
+    elif vocab_size == None : # GPT2 Tokenizer
+        print("use GPT2 Tokenizer")
+        folder_name = 'GPT2'
+    
     if pretrain_fromAudioCaps == False :
         checkpoint_path = "./ClipCap_forAAC/PANNs/Cnn14_16k_mAP=0.438.pth"
         checkpoint = torch.load(checkpoint_path, map_location='cuda')
         audio_encoder.load_state_dict(checkpoint['model'])
     else :
-        
-        if vocab_size == 4373 : # Custom Tokenizer2
-            print("use Custom Tokenizer2")
-            folder_name = 5084
-        elif vocab_size == 7011 : # Custom Tokenizer1
-            print("use Custom Tokenizer1")
-            folder_name = 7911 
-        elif vocab_size == 4368 : # Clotho Tokenizer
-            print("use Clotho Tokenizer")
-            folder_name = 4992
-        elif vocab_size == None : # GPT2 Tokenizer
-            print("use GPT2 Tokenizer")
-            folder_name = 'GPT2'
-        
         audio_encoder_pt_name = 'audio_encoder_' + str(folder_name) + '_in_Audiocaps.pt'
         audio_encoder_path = './ClipCap_forAAC/pre_trained_params_from_audiocaps/'  + \
                               str(folder_name) + '/' + audio_encoder_pt_name
            
         audio_encoder.load_state_dict(torch.load(audio_encoder_path))
     
-    # Clotho는 30초짜리 audio를 쓰는데 ours는 10초짜리 오디오만 처리함. 
-    # 그래서 30초짜리 audio로 뽑은 값을 10초짜리 오디오로 뽑은 값과 같이 압축시켜주는 module이 필요함
-    # 그러한 module을 추가해주는 method가 add_compress_feature()임
-    if Dataset == 'Clotho' :
-        audio_encoder.add_compress_feature()
-    
     audio_encoder = audio_encoder.to(device)
     
     audio_num_layers = transformer_num_layers["audio_num_layers"]
     semantic_num_layers = transformer_num_layers["semantic_num_layers"]
 
-    model = ClipCap_AAC(audio_encoder, tokenizer, mapping_network_ver,
+    model = ClipCap_AAC(audio_encoder, tokenizer,
                         encoder_freeze, decoder_freeze, 
                         vocab_size, Dataset,
                         prefix_size_dict = prefix_size_dict, 

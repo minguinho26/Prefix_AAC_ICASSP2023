@@ -46,7 +46,6 @@ prefix_size = audio_prefix_size + semantic_prefix_size
 
 transformer_num_layers = {"audio_num_layers" : 4 , "semantic_num_layers" : 4}
 prefix_size_dict = {"audio_prefix_size" : audio_prefix_size, "semantic_prefix_size" : semantic_prefix_size}
-mapping_network_ver = 2
 
 # argv의 개수가 2 + 1개다 : custom vocab을 사용했다
 vocab_size = None
@@ -67,7 +66,7 @@ test_dataloader  = dataloader_ClothoDataset(tokenizer, data_dir, TEST_BATCH_SIZE
 USE_CUDA = torch.cuda.is_available() 
 device = torch.device('cuda:0' if USE_CUDA else 'cpu')
 
-model = get_ClipCap_AAC(tokenizer, mapping_network_ver = mapping_network_ver, 
+model = get_ClipCap_AAC(tokenizer, 
                         vocab_size = vocab_size, Dataset = 'Clotho',
                         prefix_size_dict = prefix_size_dict, transformer_num_layers = transformer_num_layers, 
                         encoder_freeze = False, decoder_freeze = True,

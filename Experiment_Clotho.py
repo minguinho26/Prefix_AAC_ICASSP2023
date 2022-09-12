@@ -43,7 +43,7 @@ elif len(sys.argv) < argv_num_with_gpt2_tokenizer :
 
 data_dir = './Clotho'
 
-epochs = 50
+epochs = 60
 LR = 5e-5
 
 audio_prefix_size = 15
@@ -52,7 +52,6 @@ prefix_size = audio_prefix_size + semantic_prefix_size
 
 transformer_num_layers = {"audio_num_layers" : 4 , "semantic_num_layers" : 4}
 prefix_size_dict = {"audio_prefix_size" : audio_prefix_size, "semantic_prefix_size" : semantic_prefix_size}
-mapping_network_ver = 1
 
 # argv의 개수가 2 + 1개다 : custom vocab을 사용했다
 vocab_size = None
@@ -68,7 +67,7 @@ else :
     tokenizer_type = 'GPT2'
 
 TEST_BATCH_SIZE = 5
-TRAIN_BATCH_SIZE = 34 
+TRAIN_BATCH_SIZE = 55 
 test_dataloader  = dataloader_ClothoDataset(tokenizer, data_dir, TEST_BATCH_SIZE, split = 'evaluation', prefix_size = prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
 train_dataloader = dataloader_ClothoDataset(tokenizer, data_dir, TRAIN_BATCH_SIZE, split = 'development', prefix_size = prefix_size, is_TrainDataset = True, tokenizer_type = tokenizer_type)
 
@@ -82,7 +81,7 @@ createDirectory(MODEL_NAME)
 USE_CUDA = torch.cuda.is_available() 
 device = torch.device('cuda:0' if USE_CUDA else 'cpu')
 
-model = get_ClipCap_AAC(tokenizer, mapping_network_ver = mapping_network_ver, 
+model = get_ClipCap_AAC(tokenizer, 
                         vocab_size = vocab_size, Dataset = 'Clotho',
                         prefix_size_dict = prefix_size_dict, transformer_num_layers = transformer_num_layers,
                         encoder_freeze = False, decoder_freeze = True,
