@@ -70,7 +70,7 @@ def Train(model, LR, train_dataloader, test_dataloader, epochs, model_name, beam
         
 #         if (epoch >= 9) and ((epoch + 1) % 5 == 0) : 
         if (epoch >= 9) and ((epoch + 1) % 20 == 0) : 
-            eval_model(model, test_dataloader, epoch, model_name, beam_search, Dataset = Dataset)
+            eval_model(model, test_dataloader, epoch, model_name, beam_search)
             model.train()
             
         if (epoch + 1 == 16) and Dataset == 'AudioCaps' :
@@ -102,7 +102,7 @@ def Train(model, LR, train_dataloader, test_dataloader, epochs, model_name, beam
     print("Training time :", result_list[0])
 
 
-def eval_model(model, test_dataloader, epoch, model_name, beam_search, Dataset = 'AudioCaps') :
+def eval_model(model, test_dataloader, epoch, model_name, beam_search) :
     
     model.eval()
     model.to(device)
