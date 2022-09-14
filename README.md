@@ -24,7 +24,7 @@ gdown https://drive.google.com/file/d/15ASmIoWg0ac6qm0ixdiVwh88e8EA2MZ7/view?usp
 5. **ClipCap_forAAC/pre_trained_params_from_audiocaps** 폴더로 이동합니다.
 6. 아래 명령어를 입력합니다.
 ```
-gdown https://drive.google.com/file/d/1q3RsyKOr1EmmW0hm0QR5Jy_zAY4hFw4S/view?usp=sharing --fuzzy
+gdown https://drive.google.com/file/d/1VK2mCuBgICG2Ckt9PFNS_r0-QQYZUlJk/view?usp=sharing --fuzzy
 
 ```
 7. 다운로드 받은 Pre_trained_params.zip을 압축해제 합니다.

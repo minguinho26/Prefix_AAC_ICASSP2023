@@ -68,7 +68,8 @@ def Train(model, LR, train_dataloader, test_dataloader, epochs, model_name, beam
         
         
         
-        if (epoch >= 9) and ((epoch + 1) % 5 == 0) : 
+#         if (epoch >= 9) and ((epoch + 1) % 5 == 0) : 
+        if (epoch >= 9) and ((epoch + 1) % 20 == 0) : 
             eval_model(model, test_dataloader, epoch, model_name, beam_search, Dataset = Dataset)
             model.train()
             
@@ -79,8 +80,13 @@ def Train(model, LR, train_dataloader, test_dataloader, epochs, model_name, beam
         
         elif Dataset == 'Clotho' :
             
-            if (epoch + 1 == 30) :
+            if (epoch + 1 == 15) :
                 for param in model.audio_encoder.parameters():
+                    param.requires_grad = False
+                # test
+                for param in model.audio_clip_project.parameters():
+                    param.requires_grad = False
+                for param in model.semantic_clip_project.parameters():
                     param.requires_grad = False
 #             elif (epoch + 1 == 35) :     
 #                 for param in model.gpt.parameters():

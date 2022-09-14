@@ -68,6 +68,19 @@ class tokenizer_Clotho() :
             self.vocab = pickle.load(f) 
 
 class ClothoDataset(Dataset):
+    
+    
+    def compress_audio(self, audio, set_length = 10) :
+        
+        ratio = audio.size()[1]/(self.SAMPLE_RATE * set_length)
+        
+        compress_idx_list = []
+        
+        for idx in range(self.SAMPLE_RATE * set_length) :
+            compress_idx_list.append(int(ratio * idx))
+        
+        return audio[:, compress_idx_list]
+    
     def __init__(self, tokenizer, data_dir, split, prefix_size, tokenizer_type = 'GPT2') :  # split = 'development' or 'evaluation'
         super(ClothoDataset, self).__init__()
         
@@ -84,6 +97,7 @@ class ClothoDataset(Dataset):
         audio_file_list = os.listdir(self.audio_files_dir)
         
         self.audio_name_list = []
+        self.audio_file_list = []
         self.token_list = []
         self.caption_list_for_test = []
         
@@ -91,10 +105,14 @@ class ClothoDataset(Dataset):
         # audio의 경로, audio에 해당하는 caption을 리스트에 추가
         for file in tqdm(audio_file_list, desc = 'get dataset...') :
            
+            audio_file_full_path = self.audio_files_dir + '/' + file
+            audio_file, _ = torchaudio.load(audio_file_full_path)
+            audio_file = self.compress_audio(audio_file).squeeze(0)
+            
             for i in range(5) :
                 
+                self.audio_file_list.append(audio_file)
                 self.audio_name_list.append(file)
-                
                 sentence_str = 'caption_' + str(i + 1)
                 caption = csv_file[csv_file['file_name'] == file][sentence_str].item()
 
@@ -139,7 +157,7 @@ class ClothoDataset(Dataset):
             
     def __len__(self):
        
-        return len(self.audio_name_list)
+        return len(self.audio_file_list)
     
     def pad_tokens(self, item: int):
         tokens = self.token_list[item].clone().detach()
@@ -159,27 +177,11 @@ class ClothoDataset(Dataset):
     
     def __getitem__(self, item: int) :
         
-        audio_file_full_path = self.audio_files_dir + '/' + self.audio_name_list[item]
-        audio_file, _ = torchaudio.load(audio_file_full_path)
-        audio_file = audio_file.squeeze(0)
-    
-        # 지정한 Length를 기준으로 slicing or padding을 수행
-        set_length = 30
-        
-        # slicing
-        if audio_file.shape[0] > (self.SAMPLE_RATE * set_length) :
-            audio_file = audio_file[:self.SAMPLE_RATE * set_length]
-        # zero padding
-        if audio_file.shape[0] < (self.SAMPLE_RATE * set_length) :
-            pad_len = (self.SAMPLE_RATE * set_length) - audio_file.shape[0]
-            pad_val = torch.zeros(pad_len)
-            audio_file = torch.cat((audio_file, pad_val), dim=0)
-        
         if self.split == 'development' :
             tokens, mask = self.pad_tokens(item)
-            return audio_file, tokens, mask, self.audio_name_list[item]
+            return self.audio_file_list[item], tokens, mask, self.audio_name_list[item]
         else :
-            return audio_file, self.caption_list_for_test[item], self.audio_name_list[item]
+            return self.audio_file_list[item], self.caption_list_for_test[item], self.audio_name_list[item]
     
 
 def dataloader_ClothoDataset(tokenizer, data_dir, batch_size, split, prefix_size, is_TrainDataset = False, tokenizer_type = 'GPT2') :
