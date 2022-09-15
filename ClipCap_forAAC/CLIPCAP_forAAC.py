@@ -130,7 +130,7 @@ class TransformerMapper_forSemanticFeature(nn.Module):
         self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)
         torch.nn.init.kaiming_uniform_(self.prefix_const)
         
-        print("semantic feature ver's mapping network : num_head =", num_head, "num_layers =", num_layers)
+        print("semantic feature's mapping network : num_head =", num_head, "num_layers =", num_layers)
 
 
 class ClipCap_AAC(nn.Module):
