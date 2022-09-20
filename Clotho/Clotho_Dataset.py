@@ -20,7 +20,7 @@ class tokenizer_Clotho() :
         token_idx = []
         for word in word_list : 
 
-            if self.vocab_size == 4373 and word[-1] == ',' :
+            if self.vocab_size == 6524 and word[-1] == ',' :
                 word_wo_rest = word[:-1]
                 token_idx.append(self.vocab.index(word_wo_rest))
                 token_idx.append(self.vocab.index(','))
@@ -56,13 +56,16 @@ class tokenizer_Clotho() :
         
         file_path = ''
         self.vocab_size = vocab_size
-        
-        if vocab_size == 4373 : # 마침표, 쉼표 제거 + 쉼표를 vocab에 포함 (with <unk> token)
-            file_path = './Clotho/Clotho_vocabulary_4373.pickle'
-        elif vocab_size == 7011 : # 마침표 제거 X (with <unk> token)
-            file_path = './Clotho/Clotho_vocabulary_7011.pickle'
-        elif vocab_size == 4368 : # Clotho == ACT, [walkietalkie walkie-talkie] 말고 구성요소는 다 똑같음 (index별 값도 다 똑같음)
-            file_path = './Clotho/Clotho_vocabulary_4368.pickle'
+
+        if vocab_size == 6524 : # 마침표, 쉼표 제거 + 쉼표를 vocab에 포함 (with <unk> token)
+            # 1440개 단어가 Clotho에만 존재
+            file_path = './Clotho/Clotho_vocabulary_6524.pickle'
+        elif vocab_size == 10627 : # 마침표 제거 X (with <unk> token)
+            # 2716개 단어가 Clotho에만 존재
+            file_path = './Clotho/Clotho_vocabulary_10627.pickle'
+        elif vocab_size == 6427 : # Clotho == ACT, [walkietalkie walkie-talkie] 말고 구성요소는 다 똑같음 (index별 값도 다 똑같음)
+            # 1435개 단어가 Clotho에만 존재
+            file_path = './Clotho/Clotho_vocabulary_6427.pickle'
         
         with open(file_path, 'rb') as f:
             self.vocab = pickle.load(f) 
@@ -131,11 +134,11 @@ class ClothoDataset(Dataset):
                 if split != 'development' :
                     self.caption_list_for_test.append(caption)
                         
-                if tokenizer.vocab_size == 4368 :
+                if tokenizer.vocab_size == 6427 :
                     caption = caption.translate(str.maketrans('', '', string.punctuation))
-                elif (tokenizer.vocab_size == 7011) or (tokenizer_type == 'GPT2') or (tokenizer.vocab_size == 4373) :
+                elif (tokenizer.vocab_size == 10627) or (tokenizer_type == 'GPT2') or (tokenizer.vocab_size == 6524) :
                     caption = re.sub(r'[.]', '', caption)
-                    if (tokenizer.vocab_size == 7011) or (tokenizer_type == 'GPT2'):
+                    if (tokenizer.vocab_size == 10627) or (tokenizer_type == 'GPT2'):
                         caption += '.'
                     
                 caption = caption.strip()

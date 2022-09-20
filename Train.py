@@ -1,4 +1,4 @@
-from transformers import AdamW, get_cosine_schedule_with_warmup
+from transformers import AdamW, get_cosine_schedule_with_warmup, get_constant_schedule_with_warmup
 from tqdm import tqdm
 import time
 import datetime
@@ -22,14 +22,13 @@ def Train(model, LR, train_dataloader, test_dataloader, epochs, model_name, beam
     model.train()
     model.to(device)
     
-    warmup_steps = int((epochs * len(train_dataloader)) /6) # 총 weight update 횟수의 1/6은 warm-up 시기임
+    warmup_steps = int((epochs * len(train_dataloader)) / 6)
+    num_training_steps=epochs * len(train_dataloader)
     
-    optimizer = AdamW(model.parameters(), lr=LR, weight_decay = 0.01)
-    
+    # AudioCaps를 사용할 경우 optimizer의 weight_decay는 0.01이 됨
+    optimizer = AdamW(model.parameters(), lr=LR, weight_decay = 0.02)
     scheduler = get_cosine_schedule_with_warmup(
-        optimizer, num_warmup_steps=warmup_steps, num_training_steps=epochs * len(train_dataloader))
-    
-    epoch_eval_interval = int(epochs/3)
+    optimizer, num_warmup_steps=warmup_steps, num_training_steps=num_training_steps)
     
     prefix_length = model.audio_prefix_length + model.semantic_prefix_length
     
@@ -54,11 +53,10 @@ def Train(model, LR, train_dataloader, test_dataloader, epochs, model_name, beam
                 
             total_loss_per_epopch += loss.item()
             loss_add_count += 1.0
-    
             loss.backward()
+            
             optimizer.step()
             optimizer.zero_grad()
-                
             scheduler.step()
             
             avr_loss = total_loss_per_epopch / loss_add_count
@@ -66,33 +64,17 @@ def Train(model, LR, train_dataloader, test_dataloader, epochs, model_name, beam
         
         training_consumed_sec += (time.time() - train_start_time_per_epoch)
         
-        
-        
-#         if (epoch >= 9) and ((epoch + 1) % 5 == 0) : 
-        if (epoch >= 9) and ((epoch + 1) % 20 == 0) : 
+        if (epoch >= 14) and ((epoch + 1) % 5 == 0) : 
             eval_model(model, test_dataloader, epoch, model_name, beam_search)
             model.train()
             
         if (epoch + 1 == 16) and Dataset == 'AudioCaps' :
             for param in model.audio_encoder.parameters():
                 param.requires_grad = False
-        # 학습의 2/3 지점 이후부터 Encoder의 모든 Parameter들을 학습 가능하게
+        elif Dataset == 'Clotho' and (epoch + 1 == 30) : # epoch : 60
+            for param in model.audio_encoder.parameters():
+                param.requires_grad = False
         
-        elif Dataset == 'Clotho' :
-            
-            if (epoch + 1 == 15) :
-                for param in model.audio_encoder.parameters():
-                    param.requires_grad = False
-                # test
-                for param in model.audio_clip_project.parameters():
-                    param.requires_grad = False
-                for param in model.semantic_clip_project.parameters():
-                    param.requires_grad = False
-#             elif (epoch + 1 == 35) :     
-#                 for param in model.gpt.parameters():
-#                     param.requires_grad = False
-            
-                    
         param_file_path = "./Train_record/params_" + model_name + "/Param_epoch_" + str(epoch) + ".pt"
             
         torch.save(model.state_dict(), param_file_path)

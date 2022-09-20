@@ -130,13 +130,28 @@ class TransformerMapper_forSemanticFeature(nn.Module):
         self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)
         torch.nn.init.kaiming_uniform_(self.prefix_const)
         
-        print("semantic feature's mapping network : num_head =", num_head, "num_layers =", num_layers)
+        print("semantic feature ver's mapping network : num_head =", num_head, "num_layers =", num_layers)
 
 
 class ClipCap_AAC(nn.Module):
 
     def get_dummy_token(self, batch_size: int, device: torch.device) -> torch.Tensor:
         return torch.zeros(batch_size, (self.audio_prefix_length + self.semantic_prefix_length), dtype=torch.int64, device=device)
+    
+    def get_logits_for_inference(self, generated) :
+        
+        out = self.gpt(inputs_embeds=generated)
+        out_hidden_states = out[0]
+        logits = self.language_header(out_hidden_states)
+                
+        if self.tokenizer.vocab_size != None :
+            logits[:,:,0] = 0.0 # '!' token은 사용하지 않기 때문에 예측하지 않게끔 만든다
+        
+        if self.Dataset == 'Clotho' :
+            logits_for_clotho = self.language_header_only_for_clotho(out_hidden_states)
+            logits = torch.cat((logits, logits_for_clotho), dim=2)
+        
+        return logits
     
     def generate_beam(self, prefix_projections, beam_size = 5) :
         
@@ -160,13 +175,8 @@ class ClipCap_AAC(nn.Module):
             is_stopped = torch.zeros(beam_size, device=self.device, dtype=torch.bool)
             
             for i in range(entry_length):
-                out = self.gpt(inputs_embeds=generated)
-                out_hidden_states = out[0]
-                logits = self.language_header(out_hidden_states)
                 
-                if self.tokenizer.vocab_size != None :
-                    logits[:,:,0] = 0.0 # '!' token은 사용하지 않기 때문에 예측하지 않게끔 만든다
-                
+                logits = self.get_logits_for_inference(generated)
                 
                 logits = logits[:, -1, :] / (temperature)
                 logits = logits.softmax(-1).log()
@@ -220,8 +230,6 @@ class ClipCap_AAC(nn.Module):
         
         return output_texts_list
 
-        
-    
     def generate(self, prefix_projections) :
         temperature = 1.0
         entry_length = 67
@@ -245,12 +253,8 @@ class ClipCap_AAC(nn.Module):
             tokens = None # caption만들어줄 때마다 초기화 필수
             
             for i in range(entry_length):
-                out = self.gpt(inputs_embeds=generated)
-                out_hidden_states = out[0]
-                logits = self.language_header(out_hidden_states)
                 
-                if self.tokenizer.vocab_size != None :
-                    logits[:,:,0] = 0.0 # '!' token은 사용하지 않기 때문에 예측하지 않게끔 만든다
+                logits = self.get_logits_for_inference(generated)
 
                 logits = logits[:, -1, :] / (temperature)
                 sorted_logits, sorted_indices = torch.sort(logits, descending=True)
@@ -280,22 +284,8 @@ class ClipCap_AAC(nn.Module):
             output_text = self.tokenizer.decode(output_list)
             generated_list.append(output_text)
         return generated_list 
-    
-    def compress_audio(self, audio, set_length = 10) :
-        
-        ratio = audio.size()[1]/(self.SAMPLE_RATE * set_length)
-        
-        compress_idx_list = []
-        
-        for idx in range(self.SAMPLE_RATE * set_length) :
-            compress_idx_list.append(int(ratio * idx))
-        
-        return audio[:, compress_idx_list]
-    
+
     def forward(self, audio, tokens = None, mask = None, labels = None, beam_search = False):
-        
-        if self.Dataset == 'Clotho' :
-            audio = self.compress_audio(audio)
         
         audio_feature, semantic_feature = self.audio_encoder(audio)
         
@@ -303,7 +293,6 @@ class ClipCap_AAC(nn.Module):
         
         semantic_prefix_projections = self.semantic_clip_project(semantic_feature).view(-1, self.semantic_prefix_length, self.gpt_embedding_size)
         
-
         prefix_projections = torch.cat((audio_prefix_projections, semantic_prefix_projections), dim=1) # 기존 제안
         if self.training :
             embedding_text = self.gpt.wte(tokens.to(self.device))
@@ -317,6 +306,10 @@ class ClipCap_AAC(nn.Module):
             if self.tokenizer.vocab_size != None :
                 logits[:,:,0] = 0.0 # '!' token은 사용하지 않기 때문에 예측하지 않게끔 만든다
             
+            if self.Dataset == 'Clotho' :
+                logits_for_clotho = self.language_header_only_for_clotho(out_hidden_states)
+                logits = torch.cat((logits, logits_for_clotho), dim=2)
+                
             return logits
         else :
             if beam_search == True :
@@ -327,7 +320,7 @@ class ClipCap_AAC(nn.Module):
 
     def __init__(self, audio_encoder, tokenizer,
                  encoder_freeze = True, decoder_freeze = True, 
-                 vocab_size = None, Dataset = 'AudioCaps', 
+                 vocab_size = None, vocab_size_only_clotho = None, Dataset = 'AudioCaps', 
                  prefix_size_dict = {"audio_prefix_size" : 10, "semantic_prefix_size" : 10}, 
                  audio_num_layers = 2, semantic_num_layers = 2,
                  pretrain_fromAudioCaps = False, device = 'cuda'):
@@ -366,30 +359,39 @@ class ClipCap_AAC(nn.Module):
             header_gpt2_header_params = './ClipCap_forAAC/PreTrained_GPT2Header.pt'
             self.language_header.load_state_dict(torch.load(header_gpt2_header_params)) # Huggingface에서 사전학습된 header
         else :
-            self.language_header = nn.Linear(768, vocab_size, bias=False) # vocab_size : custom vocabulary의 사이즈
-            torch.nn.init.kaiming_uniform_(self.language_header.weight)   
+            if self.Dataset == 'Clotho' :
+                vocab_size_audiocaps = vocab_size - vocab_size_only_clotho
+                self.language_header = nn.Linear(768, vocab_size_audiocaps, bias=False) # vocab_size : custom vocabulary의 사이즈
+                nn.init.kaiming_uniform_(self.language_header.weight)  
+                
+                self.language_header_only_for_clotho = nn.Linear(768, vocab_size_only_clotho, bias=False)
+                nn.init.kaiming_uniform_(self.language_header_only_for_clotho.weight)  
+            else :
+                self.language_header = nn.Linear(768, vocab_size, bias=False) # vocab_size : custom vocabulary의 사이즈
+                nn.init.kaiming_uniform_(self.language_header.weight)  
+                
             
         if pretrain_fromAudioCaps == True :
-            if vocab_size == 4373 : # Custom Tokenizer2
-                folder_name = 5084
-            elif vocab_size == 7011 : # Custom Tokenizer1
-                folder_name = 7911 
-            elif vocab_size == 4368 : # Clotho Tokenizer
-                folder_name = 4992
+            if vocab_size != None : 
+                folder_name = vocab_size_audiocaps
             elif vocab_size == None : # GPT2 Tokenizer
                 folder_name = 'GPT2'
                   
             audio_clip_project_pt_name = 'audio_clip_project_' + str(folder_name) + '_in_Audiocaps.pt'
             semantic_clip_project_pt_name = 'semantic_clip_project_' + str(folder_name) + '_in_Audiocaps.pt'
+            language_header_pt_name = 'language_header_' + str(folder_name) + '_in_Audiocaps.pt'
 
             audio_clip_project_path = './ClipCap_forAAC/pre_trained_params_from_audiocaps/' + \
                                        str(folder_name) + '/' + audio_clip_project_pt_name
             semantic_clip_project_path = './ClipCap_forAAC/pre_trained_params_from_audiocaps/' + \
                                          str(folder_name) + '/' + semantic_clip_project_pt_name
+            language_header_path = './ClipCap_forAAC/pre_trained_params_from_audiocaps/' + \
+                                         str(folder_name) + '/' + language_header_pt_name
             
             self.audio_clip_project.load_state_dict(torch.load(audio_clip_project_path))
             self.semantic_clip_project.load_state_dict(torch.load(semantic_clip_project_path))
-        
+            self.language_header.load_state_dict(torch.load(language_header_path))
+
         if encoder_freeze == True :
             for param in self.audio_encoder.parameters():
                 param.requires_grad = False
@@ -412,18 +414,24 @@ def get_ClipCap_AAC(tokenizer,
                 hop_size=320, mel_bins=64, fmin=50, fmax=14000, 
                 classes_num=527)
     
-    if vocab_size == 4373 : # Custom Tokenizer2
+    folder_name = None
+    if vocab_size == 6524 : # Custom Tokenizer2
         print("use Custom Tokenizer2")
         folder_name = 5084
-    elif vocab_size == 7011 : # Custom Tokenizer1
+        vocab_size_only_clotho = 6524 - 5084
+    elif vocab_size == 10627 : # Custom Tokenizer1
         print("use Custom Tokenizer1")
         folder_name = 7911 
-    elif vocab_size == 4368 : # Clotho Tokenizer
+    elif vocab_size == 6427 : # Clotho Tokenizer
         print("use Clotho Tokenizer")
         folder_name = 4992
     elif vocab_size == None : # GPT2 Tokenizer
         print("use GPT2 Tokenizer")
         folder_name = 'GPT2'
+    
+    vocab_size_only_clotho = None # AudioCaps에는 없고 Clotho에만 있는 단어의 개수
+    if folder_name != None :
+        vocab_size_only_clotho = vocab_size - folder_name
     
     if pretrain_fromAudioCaps == False :
         checkpoint_path = "./ClipCap_forAAC/PANNs/Cnn14_16k_mAP=0.438.pth"
@@ -443,7 +451,7 @@ def get_ClipCap_AAC(tokenizer,
 
     model = ClipCap_AAC(audio_encoder, tokenizer,
                         encoder_freeze, decoder_freeze, 
-                        vocab_size, Dataset,
+                        vocab_size, vocab_size_only_clotho, Dataset,
                         prefix_size_dict = prefix_size_dict, 
                         audio_num_layers = audio_num_layers, semantic_num_layers = semantic_num_layers, 
                         pretrain_fromAudioCaps = pretrain_fromAudioCaps, device = device)

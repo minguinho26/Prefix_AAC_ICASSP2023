@@ -68,9 +68,9 @@ device = torch.device('cuda:0' if USE_CUDA else 'cpu')
 
 model = get_ClipCap_AAC(tokenizer, 
                         vocab_size = vocab_size, Dataset = 'Clotho',
-                        prefix_size_dict = prefix_size_dict, transformer_num_layers = transformer_num_layers, 
+                        prefix_size_dict = prefix_size_dict, transformer_num_layers = transformer_num_layers,
                         encoder_freeze = False, decoder_freeze = True,
-                        pretrain_fromAudioCaps = False, device = device)
+                        pretrain_fromAudioCaps = True, device = device)
 
 model.load_state_dict(torch.load("./Train_record/params_" + Model_name + "_clotho/Param_epoch_" + str(epoch) + ".pt"))
-eval_model(model, test_dataloader, epoch, Model_name, True, Dataset = 'Clotho')
+eval_model(model, test_dataloader, epoch, Model_name, True)

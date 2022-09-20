@@ -44,7 +44,7 @@ elif len(sys.argv) < argv_num_with_gpt2_tokenizer :
 data_dir = './Clotho'
 
 epochs = 60
-LR = 1e-4
+LR = 5e-5 # 또 해볼 수 있는거  : 학습률 1e-4에 Batch size 64
 
 audio_prefix_size = 15
 semantic_prefix_size = 11 
@@ -67,7 +67,7 @@ else :
     tokenizer_type = 'GPT2'
 
 TEST_BATCH_SIZE = 5
-TRAIN_BATCH_SIZE = 32 
+TRAIN_BATCH_SIZE = 55 
 test_dataloader  = dataloader_ClothoDataset(tokenizer, data_dir, TEST_BATCH_SIZE, split = 'evaluation', prefix_size = prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
 train_dataloader = dataloader_ClothoDataset(tokenizer, data_dir, TRAIN_BATCH_SIZE, split = 'development', prefix_size = prefix_size, is_TrainDataset = True, tokenizer_type = tokenizer_type)
 
