@@ -15,7 +15,7 @@ from terminaltables import AsciiTable
 import pickle
 
 USE_CUDA = torch.cuda.is_available() 
-device = torch.device('cuda:0' if USE_CUDA else 'cpu')
+device = torch.device('cuda:1' if USE_CUDA else 'cpu')
 
 def Train(model, LR, train_dataloader, test_dataloader, epochs, model_name, beam_search, Dataset = 'AudioCaps') :
     
@@ -26,7 +26,11 @@ def Train(model, LR, train_dataloader, test_dataloader, epochs, model_name, beam
     num_training_steps=epochs * len(train_dataloader)
     
     # AudioCaps를 사용할 경우 optimizer의 weight_decay는 0.01이 됨
-    optimizer = AdamW(model.parameters(), lr=LR, weight_decay = 0.02)
+    if Dataset == 'AudioCaps' :
+        optimizer = AdamW(model.parameters(), lr=LR, weight_decay = 0.01)
+    else :
+        optimizer = AdamW(model.parameters(), lr=LR, weight_decay = 0.02)
+        
     scheduler = get_cosine_schedule_with_warmup(
     optimizer, num_warmup_steps=warmup_steps, num_training_steps=num_training_steps)
     

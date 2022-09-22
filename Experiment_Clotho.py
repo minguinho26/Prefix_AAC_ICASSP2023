@@ -79,13 +79,18 @@ MODEL_NAME = sys.argv[1] + '_clotho'
 createDirectory(MODEL_NAME)
 
 USE_CUDA = torch.cuda.is_available() 
-device = torch.device('cuda:0' if USE_CUDA else 'cpu')
+device = torch.device('cuda:1' if USE_CUDA else 'cpu')
 
 model = get_ClipCap_AAC(tokenizer, 
                         vocab_size = vocab_size, Dataset = 'Clotho',
                         prefix_size_dict = prefix_size_dict, transformer_num_layers = transformer_num_layers,
                         encoder_freeze = False, decoder_freeze = True,
                         pretrain_fromAudioCaps = True, device = device)
+
+# NGPU = torch.cuda.device_count()
+# if NGPU > 1:
+#     model = torch.nn.DataParallel(model, device_ids=list(range(NGPU)))
+#     model.to(device)
 
 Train(model, LR, train_dataloader, test_dataloader, 
     epochs, model_name = MODEL_NAME, beam_search = True,

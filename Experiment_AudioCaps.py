@@ -80,7 +80,7 @@ MODEL_NAME = sys.argv[1] + '_audiocaps'
 createDirectory(MODEL_NAME)
 
 USE_CUDA = torch.cuda.is_available() 
-device = torch.device('cuda:0' if USE_CUDA else 'cpu')
+device = torch.device('cuda:1' if USE_CUDA else 'cpu')
 
 model = get_ClipCap_AAC(tokenizer, 
                         vocab_size = vocab_size, Dataset = 'AudioCaps',

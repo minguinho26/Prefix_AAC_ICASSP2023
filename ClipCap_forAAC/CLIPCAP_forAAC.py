@@ -60,7 +60,7 @@ class TransformerMapper_forAudioFeature(nn.Module):
         out = self.transformer(prefix)[:, self.clip_length:]
         return out
 
-    def __init__(self, dim_embedding: int, prefix_length: int, clip_length: int, num_layers: int = 8, device = 'cuda', Dataset = 'AudioCaps'):
+    def __init__(self, dim_embedding: int, prefix_length: int, clip_length: int, num_layers: int = 8, device = 'cuda:1', Dataset = 'AudioCaps'):
         super(TransformerMapper_forAudioFeature, self).__init__()
         
         self.Dataset = Dataset
@@ -112,7 +112,7 @@ class TransformerMapper_forSemanticFeature(nn.Module):
         out = self.transformer(prefix)[:, self.clip_length:]
         return out
 
-    def __init__(self, dim_embedding: int, prefix_length: int, clip_length: int, num_layers : int = 8, device = 'cuda', Dataset = 'AudioCaps'):
+    def __init__(self, dim_embedding: int, prefix_length: int, clip_length: int, num_layers : int = 8, device = 'cuda:1', Dataset = 'AudioCaps'):
         super(TransformerMapper_forSemanticFeature, self).__init__()
 
         self.device = device
@@ -144,10 +144,10 @@ class ClipCap_AAC(nn.Module):
         out_hidden_states = out[0]
         logits = self.language_header(out_hidden_states)
                 
-        if self.tokenizer.vocab_size != None :
+        if self.vocab_size != None :
             logits[:,:,0] = 0.0 # '!' token은 사용하지 않기 때문에 예측하지 않게끔 만든다
         
-        if self.Dataset == 'Clotho' :
+        if self.Dataset == 'Clotho' and self.vocab_size != None :
             logits_for_clotho = self.language_header_only_for_clotho(out_hidden_states)
             logits = torch.cat((logits, logits_for_clotho), dim=2)
         
@@ -303,10 +303,10 @@ class ClipCap_AAC(nn.Module):
             
             logits = self.language_header(out_hidden_states)
             
-            if self.tokenizer.vocab_size != None :
+            if self.vocab_size != None :
                 logits[:,:,0] = 0.0 # '!' token은 사용하지 않기 때문에 예측하지 않게끔 만든다
             
-            if self.Dataset == 'Clotho' :
+            if self.Dataset == 'Clotho' and self.vocab_size != None :
                 logits_for_clotho = self.language_header_only_for_clotho(out_hidden_states)
                 logits = torch.cat((logits, logits_for_clotho), dim=2)
                 
@@ -323,7 +323,7 @@ class ClipCap_AAC(nn.Module):
                  vocab_size = None, vocab_size_only_clotho = None, Dataset = 'AudioCaps', 
                  prefix_size_dict = {"audio_prefix_size" : 10, "semantic_prefix_size" : 10}, 
                  audio_num_layers = 2, semantic_num_layers = 2,
-                 pretrain_fromAudioCaps = False, device = 'cuda'):
+                 pretrain_fromAudioCaps = False, device = 'cuda:1'):
         
         super(ClipCap_AAC, self).__init__()
         self.device = device
@@ -372,10 +372,13 @@ class ClipCap_AAC(nn.Module):
                 
             
         if pretrain_fromAudioCaps == True :
+            
+            print("Get Pre-traiend Params")
+            
             if vocab_size != None : 
                 folder_name = vocab_size_audiocaps
             elif vocab_size == None : # GPT2 Tokenizer
-                folder_name = 'GPT2'
+                folder_name = 'GPT2_freeze'
                   
             audio_clip_project_pt_name = 'audio_clip_project_' + str(folder_name) + '_in_Audiocaps.pt'
             semantic_clip_project_pt_name = 'semantic_clip_project_' + str(folder_name) + '_in_Audiocaps.pt'
@@ -390,7 +393,10 @@ class ClipCap_AAC(nn.Module):
             
             self.audio_clip_project.load_state_dict(torch.load(audio_clip_project_path))
             self.semantic_clip_project.load_state_dict(torch.load(semantic_clip_project_path))
-            self.language_header.load_state_dict(torch.load(language_header_path))
+            
+            if folder_name != 'GPT2_freeze' :
+                print("Get Pre-traiend language header")
+                self.language_header.load_state_dict(torch.load(language_header_path))
 
         if encoder_freeze == True :
             for param in self.audio_encoder.parameters():
@@ -400,6 +406,9 @@ class ClipCap_AAC(nn.Module):
         if decoder_freeze == True :
             for param in self.gpt.parameters():
                 param.requires_grad = False
+            # Test(Header를 HuggingFace에서 제공하는 것으로 쭉 유지하고 싶을 경우 사용)
+            for param in self.language_header.parameters():
+                param.requires_grad = False
             print("GPT2 freezing")
             
                 
@@ -407,7 +416,7 @@ def get_ClipCap_AAC(tokenizer,
                     vocab_size = None, Dataset = 'AudioCaps',
                     prefix_size_dict = {"audio_prefix_size" : 10, "semantic_prefix_size" : 10}, 
                     transformer_num_layers = None, encoder_freeze = True, decoder_freeze = True, 
-                    pretrain_fromAudioCaps = False, device = 'cuda') :
+                    pretrain_fromAudioCaps = False, device = 'cuda:1') :
     
     # PANNS
     audio_encoder = Cnn14(sample_rate=16000, window_size=512, 
@@ -427,15 +436,15 @@ def get_ClipCap_AAC(tokenizer,
         folder_name = 4992
     elif vocab_size == None : # GPT2 Tokenizer
         print("use GPT2 Tokenizer")
-        folder_name = 'GPT2'
+        folder_name = 'GPT2_freeze'
     
     vocab_size_only_clotho = None # AudioCaps에는 없고 Clotho에만 있는 단어의 개수
-    if folder_name != None :
+    if vocab_size != None :
         vocab_size_only_clotho = vocab_size - folder_name
     
     if pretrain_fromAudioCaps == False :
         checkpoint_path = "./ClipCap_forAAC/PANNs/Cnn14_16k_mAP=0.438.pth"
-        checkpoint = torch.load(checkpoint_path, map_location='cuda')
+        checkpoint = torch.load(checkpoint_path, map_location=device)
         audio_encoder.load_state_dict(checkpoint['model'])
     else :
         audio_encoder_pt_name = 'audio_encoder_' + str(folder_name) + '_in_Audiocaps.pt'
