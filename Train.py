@@ -14,10 +14,7 @@ from eval_metrics import evaluate_metrics
 from terminaltables import AsciiTable
 import pickle
 
-USE_CUDA = torch.cuda.is_available() 
-device = torch.device('cuda:1' if USE_CUDA else 'cpu')
-
-def Train(model, LR, train_dataloader, test_dataloader, epochs, model_name, beam_search, Dataset = 'AudioCaps') :
+def Train(model, LR, train_dataloader, test_dataloader, epochs, model_name, beam_search, device, Dataset = 'AudioCaps') :
     
     model.train()
     model.to(device)
@@ -69,7 +66,7 @@ def Train(model, LR, train_dataloader, test_dataloader, epochs, model_name, beam
         training_consumed_sec += (time.time() - train_start_time_per_epoch)
         
         if (epoch >= 14) and ((epoch + 1) % 5 == 0) : 
-            eval_model(model, test_dataloader, epoch, model_name, beam_search)
+            eval_model(model, test_dataloader, epoch, model_name, beam_search, device)
             model.train()
             
         if (epoch + 1 == 16) and Dataset == 'AudioCaps' :
@@ -88,7 +85,7 @@ def Train(model, LR, train_dataloader, test_dataloader, epochs, model_name, beam
     print("Training time :", result_list[0])
 
 
-def eval_model(model, test_dataloader, epoch, model_name, beam_search) :
+def eval_model(model, test_dataloader, epoch, model_name, beam_search, device) :
     
     model.eval()
     model.to(device)
@@ -117,14 +114,16 @@ def eval_model(model, test_dataloader, epoch, model_name, beam_search) :
                         'caption_predicted': pred_caption})
         captions_gt.append({
                         'file_name': f_names[0],
-                        'caption_1': captions[0],
-                        'caption_2': captions[1],
-                        'caption_3': captions[2],
-                        'caption_4': captions[3],
-                        'caption_5': captions[4]})
+                        'caption_reference_01': captions[0],
+                        'caption_reference_02': captions[1],
+                        'caption_reference_03': captions[2],
+                        'caption_reference_04': captions[3],
+                        'caption_reference_05': captions[4]})
     
     # 전체 측정값을 한 번에 method에 넣어서 측정
     metrics = evaluate_metrics(captions_pred, captions_gt)
+    
+    return metrics, captions_pred, captions_gt
     
     total_results = {}
     total_results['BLUE_1'] = metrics['bleu_1']['score']

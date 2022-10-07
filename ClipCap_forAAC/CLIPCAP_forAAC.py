@@ -424,22 +424,24 @@ def get_ClipCap_AAC(tokenizer,
                 classes_num=527)
     
     folder_name = None
-    if vocab_size == 6524 : # Custom Tokenizer2
-        print("use Custom Tokenizer2")
-        folder_name = 5084
-        vocab_size_only_clotho = 6524 - 5084
-    elif vocab_size == 10627 : # Custom Tokenizer1
-        print("use Custom Tokenizer1")
-        folder_name = 7911 
-    elif vocab_size == 6427 : # Clotho Tokenizer
-        print("use Clotho Tokenizer")
-        folder_name = 4992
-    elif vocab_size == None : # GPT2 Tokenizer
-        print("use GPT2 Tokenizer")
-        folder_name = 'GPT2_freeze'
+    
+    if Dataset == 'Clotho' :
+        if vocab_size == 6524 : # Custom Tokenizer2
+            print("use Custom Tokenizer2")
+            folder_name = 5084
+            vocab_size_only_clotho = 6524 - 5084
+        elif vocab_size == 10627 : # Custom Tokenizer1
+            print("use Custom Tokenizer1")
+            folder_name = 7911 
+        elif vocab_size == 6427 : # Clotho Tokenizer
+            print("use Clotho Tokenizer")
+            folder_name = 4992
+        elif vocab_size == None : # GPT2 Tokenizer
+            print("use GPT2 Tokenizer")
+            folder_name = 'GPT2'
     
     vocab_size_only_clotho = None # AudioCaps에는 없고 Clotho에만 있는 단어의 개수
-    if vocab_size != None :
+    if vocab_size != None and folder_name != None :
         vocab_size_only_clotho = vocab_size - folder_name
     
     if pretrain_fromAudioCaps == False :

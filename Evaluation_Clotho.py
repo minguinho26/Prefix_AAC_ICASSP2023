@@ -73,4 +73,4 @@ model = get_ClipCap_AAC(tokenizer,
                         pretrain_fromAudioCaps = True, device = device)
 
 model.load_state_dict(torch.load("./Train_record/params_" + Model_name + "_clotho/Param_epoch_" + str(epoch) + ".pt"))
-eval_model(model, test_dataloader, epoch, Model_name, True)
+eval_model(model, test_dataloader, epoch, Model_name, True, device)

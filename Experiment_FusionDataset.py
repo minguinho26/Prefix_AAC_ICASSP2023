@@ -5,7 +5,7 @@ import os
 import sys
 
 # custom
-from AudioCaps.AudioCaps_Dataset import * # 데이터셋
+from FusionDataset import * # 데이터셋
 from transformers import GPT2Tokenizer
 from ClipCap_forAAC.CLIPCAP_forAAC import * # network
 from Train import *
@@ -41,8 +41,6 @@ elif len(sys.argv) < argv_num_with_gpt2_tokenizer :
     print("실험명을 입력해주십시오!")
     exit()
 
-data_dir = './AudioCaps'
-
 epochs = 50
 LR = 5e-5
 
@@ -68,9 +66,9 @@ else :
     tokenizer_type = 'GPT2'
 
 TEST_BATCH_SIZE = 5
-TRAIN_BATCH_SIZE = 75
-test_dataloader  = dataloader_AudioCapsDataset(tokenizer, data_dir, TEST_BATCH_SIZE, split = 'test', prefix_size = prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
-train_dataloader = dataloader_AudioCapsDataset(tokenizer, data_dir, TRAIN_BATCH_SIZE, split = 'train', prefix_size = prefix_size, is_TrainDataset = True, tokenizer_type = tokenizer_type)
+TRAIN_BATCH_SIZE = 62
+test_dataloader  = dataloader_FusionDataset(tokenizer, TEST_BATCH_SIZE, 'test', prefix_size, is_TrainDataset = False)
+train_dataloader = dataloader_FusionDataset(tokenizer, TRAIN_BATCH_SIZE, 'train', prefix_size, is_TrainDataset = True)
 
 #============실험================
 torch.cuda.empty_cache()
@@ -80,7 +78,7 @@ MODEL_NAME = sys.argv[1] + '_audiocaps'
 createDirectory(MODEL_NAME)
 
 USE_CUDA = torch.cuda.is_available() 
-device = torch.device('cuda:1' if USE_CUDA else 'cpu')
+device = torch.device('cuda:0' if USE_CUDA else 'cpu')
 
 model = get_ClipCap_AAC(tokenizer, 
                         vocab_size = vocab_size, Dataset = 'AudioCaps',
@@ -90,7 +88,7 @@ model = get_ClipCap_AAC(tokenizer,
 
 Train(model, LR, train_dataloader, test_dataloader,
     epochs, model_name = MODEL_NAME, beam_search = True, device = device,
-    Dataset = 'AudioCaps')
+    Dataset = 'AudioCaps') # Dataset별 학습전략이 다른데 나는 AudioCaps의 학습전략을 써야겠다.
 
 torch.cuda.empty_cache()
 #============실험================

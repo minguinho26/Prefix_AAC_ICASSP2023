@@ -93,7 +93,7 @@ model = get_ClipCap_AAC(tokenizer,
 #     model.to(device)
 
 Train(model, LR, train_dataloader, test_dataloader, 
-    epochs, model_name = MODEL_NAME, beam_search = True,
+    epochs, model_name = MODEL_NAME, beam_search = True, device = device,
     Dataset = 'Clotho')
 
 torch.cuda.empty_cache()
