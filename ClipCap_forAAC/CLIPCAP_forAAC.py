@@ -284,7 +284,7 @@ class ClipCap_AAC(nn.Module):
         
         temporal_prefix_vector = self.temporal_mappingnetwork(temporal_feature).view(-1, self.temporal_prefix_length, self.gpt_embedding_size)
         
-        global_prefix_vector = self.global_mappingnetwork(global_feature).view(-1, self.global_num_layers, self.gpt_embedding_size)
+        global_prefix_vector = self.global_mappingnetwork(global_feature).view(-1, self.global_prefix_length, self.gpt_embedding_size)
         
         prefix_vectors = torch.cat((temporal_prefix_vector, global_prefix_vector), dim=1) 
         if self.training :
@@ -342,7 +342,7 @@ class ClipCap_AAC(nn.Module):
                                     num_layers = temporal_num_layers, device = device, Dataset = Dataset)   
         
         self.global_mappingnetwork = MappingNetwork_forGlobalFeature(dim_embedding = self.gpt_embedding_size, 
-                                            prefix_length = self.global_num_layers, clip_length = global_clip_length, 
+                                            prefix_length = self.global_prefix_length, clip_length = global_clip_length, 
                                             num_layers = global_num_layers, device = device, Dataset = Dataset)
         
         self.language_header = None
@@ -421,14 +421,14 @@ def get_ClipCap_AAC(tokenizer,
     if vocab_size != None :
         print("use Custom Tokenizer")
         if Dataset == 'Clotho' : 
-            folder_name = 7911 
+            folder_name = 'Custom' 
     else :
         print("use GPT2 Tokenizer")
         folder_name = 'GPT2'
     
     vocab_size_only_clotho = None # the number of words only in Clotho
     if vocab_size != None and folder_name != None :
-        vocab_size_only_clotho = vocab_size - folder_name
+        vocab_size_only_clotho = vocab_size - 7911
     
     if pretrain_fromAudioCaps == False :
         checkpoint_path = "./ClipCap_forAAC/PANNs/Cnn14_16k_mAP=0.438.pth"

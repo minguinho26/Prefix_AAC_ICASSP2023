@@ -21,13 +21,12 @@ gdown https://drive.google.com/file/d/15ASmIoWg0ac6qm0ixdiVwh88e8EA2MZ7/view?usp
 
 ```
 
-5. **ClipCap_forAAC/pre_trained_params_from_audiocaps** 폴더로 이동합니다.
-6. 아래 명령어를 입력합니다.
+5. 아래 명령어를 입력합니다.
 ```
 gdown https://drive.google.com/file/d/1VK2mCuBgICG2Ckt9PFNS_r0-QQYZUlJk/view?usp=sharing --fuzzy
 
 ```
-7. 다운로드 받은 Pre_trained_params.zip을 압축해제 합니다.
+6. 다운로드 받은 Pre_trained_params.zip을 압축해제 합니다.
 
 <br>
 
@@ -63,6 +62,13 @@ gdown https://drive.google.com/file/d/15ODyZmXDu_gwl-GcgQ6i_dBIeLKPG5-S/view?usp
 gdown https://drive.google.com/file/d/1RK-qCJ5UM9sPl5Nh4PCrq3n8GLl1qXmW/view?usp=sharing --fuzzy
 ```
 3. 다운로드 받은 coco_caption.zip을 압축해제 합니다.
+4. 아래 명령어를 입력합니다. 
+```
+gdown https://drive.google.com/file/d/1Eh-g3FCZg9UKYbnL5pNGMN1g7IcYQ-ND/view?usp=sharing --fuzzy
+```
+5. 다운로드 받은 Trained_model_params.zip을 압축해제 합니다.
+
+
 
 <br>
 
