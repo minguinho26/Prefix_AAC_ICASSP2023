@@ -1,20 +1,16 @@
-from typing import List, Tuple
 import torch
-import copy
 import os
 import sys
 
 # custom
-from Clotho.Clotho_Dataset import * # 데이터셋
+from util import *
 from transformers import GPT2Tokenizer
 from ClipCap_forAAC.CLIPCAP_forAAC import * # network
 from Train import *
-import warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning) 
 
 # 폴더 생성 메소드
 def createDirectory(MODEL_NAME):
-    directory = "./Train_record/params_" + MODEL_NAME 
+    directory = "./Train_record/params_" + MODEL_NAME
     try:
         if not os.path.exists(directory):
             os.makedirs(directory)
@@ -31,45 +27,45 @@ def isNumber(s):
 argv_num_with_gpt2_tokenizer = 1 + 1
 argv_num_with_custom_tokenizer = 2 + 1
 
-# <실험명> <vocabulary의 크기> 를 입력한 경우
 if len(sys.argv) == argv_num_with_custom_tokenizer : 
-    if (not isNumber(sys.argv[2])) :
-        print("<vocabulary의 크기>에 대한 값이 숫자가 아닙니다!")
+    if sys.argv[2] != 'Custom' :
+        print("If you want to train using own vocabulary, input 'Custom' as last argument")
         exit()
-# 따로 입력한 값이 없을 경우
 elif len(sys.argv) < argv_num_with_gpt2_tokenizer : 
-    print("실험명을 입력해주십시오!")
+    print("Input experiment name")
     exit()
 
 data_dir = './Clotho'
 
-epochs = 60
-LR = 5e-5 # 또 해볼 수 있는거  : 학습률 1e-4에 Batch size 64
+epochs = 50
+LR = 5e-5
 
+# PANNs를 써먹기 위해 prefix_size를 수정
 audio_prefix_size = 15
 semantic_prefix_size = 11 
 prefix_size = audio_prefix_size + semantic_prefix_size
 
-transformer_num_layers = {"audio_num_layers" : 4 , "semantic_num_layers" : 4}
+transformer_num_layers = {"audio_num_layers" : 4, "semantic_num_layers" : 4}
 prefix_size_dict = {"audio_prefix_size" : audio_prefix_size, "semantic_prefix_size" : semantic_prefix_size}
 
-# argv의 개수가 2 + 1개다 : custom vocab을 사용했다
 vocab_size = None
 tokenizer_type = None
 
 if len(sys.argv) == argv_num_with_custom_tokenizer:
     vocab_size = int(sys.argv[2])
-    tokenizer = tokenizer_Clotho(vocab_size)
+    tokenizer = tokenizer_forCustomVocab(Dataset = 'Clotho')
     tokenizer_type = 'Custom'
-# argv의 개수가 1개다 : custom vocab을 사용하지 않았다
 else :
     tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
     tokenizer_type = 'GPT2'
 
 TEST_BATCH_SIZE = 5
-TRAIN_BATCH_SIZE = 55 
-test_dataloader  = dataloader_ClothoDataset(tokenizer, data_dir, TEST_BATCH_SIZE, split = 'evaluation', prefix_size = prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
-train_dataloader = dataloader_ClothoDataset(tokenizer, data_dir, TRAIN_BATCH_SIZE, split = 'development', prefix_size = prefix_size, is_TrainDataset = True, tokenizer_type = tokenizer_type)
+TRAIN_BATCH_SIZE = 75
+
+CreateDataloader(tokenizer, data_dir, TRAIN_BATCH_SIZE, 'train', prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
+
+test_dataloader  = CreateDataloader(tokenizer, data_dir, TEST_BATCH_SIZE, 'evaluation', prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
+train_dataloader = CreateDataloader(tokenizer, data_dir, TRAIN_BATCH_SIZE, 'development', prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
 
 #============실험================
 torch.cuda.empty_cache()
@@ -79,21 +75,17 @@ MODEL_NAME = sys.argv[1] + '_clotho'
 createDirectory(MODEL_NAME)
 
 USE_CUDA = torch.cuda.is_available() 
-device = torch.device('cuda:1' if USE_CUDA else 'cpu')
+device = torch.device('cuda' if USE_CUDA else 'cpu')
 
 model = get_ClipCap_AAC(tokenizer, 
                         vocab_size = vocab_size, Dataset = 'Clotho',
-                        prefix_size_dict = prefix_size_dict, transformer_num_layers = transformer_num_layers,
+                        prefix_size_dict = prefix_size_dict, transformer_num_layers = transformer_num_layers, 
                         encoder_freeze = False, decoder_freeze = True,
                         pretrain_fromAudioCaps = True, device = device)
 
-# NGPU = torch.cuda.device_count()
-# if NGPU > 1:
-#     model = torch.nn.DataParallel(model, device_ids=list(range(NGPU)))
-#     model.to(device)
-
-Train(model, LR, train_dataloader, test_dataloader, 
+Train(model, LR, train_dataloader, test_dataloader,
     epochs, model_name = MODEL_NAME, beam_search = True, device = device,
     Dataset = 'Clotho')
 
 torch.cuda.empty_cache()
+#============실험================

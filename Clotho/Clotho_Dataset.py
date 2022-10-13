@@ -1,74 +1,14 @@
 import torch
 from torch.utils.data import Dataset
-from torch.utils.data import DataLoader
+
 import pandas as pd
 import torchaudio
 import os
-import numpy as np
 from tqdm import tqdm
-import pickle
 import re
 import string
 
-# vocabulary만들 때 소문자로 변환만 한 경우 사용되는 tokenizer
-class tokenizer_Clotho() :
-    
-    def encode(self, sentence) :
-        
-        word_list = sentence.split(' ')
-        
-        token_idx = []
-        for word in word_list : 
-
-            if self.vocab_size == 6524 and word[-1] == ',' :
-                word_wo_rest = word[:-1]
-                token_idx.append(self.vocab.index(word_wo_rest))
-                token_idx.append(self.vocab.index(','))
-            else :
-                token_idx.append(self.vocab.index(word))
-            
-        # 마지막에 <eos> 추가
-        token_idx.append(13)
-        
-        return token_idx
-    
-    def decode(self, token_idx) :
-        
-        sentence = ''
-        for idx in token_idx :
-            if (idx == 13) :
-                break
-            else :
-                if (self.vocab[idx] == '.') or (self.vocab[idx] == ',') :
-                    sentence = sentence[:-1] # 마침표나 쉼표는 공백 제거 후 붙여줘야함
-                
-                sentence += self.vocab[idx] + ' '
-        
-        sentence = sentence.rstrip() # 우측 공백 제거
-        
-        # 맨 마지막에 마침표 있으면 제거해주기
-        if sentence[-1] == '.' :
-            sentence = sentence[:-1]
-        
-        return sentence # 앞글자를 대문자로 만들어줌
-
-    def __init__(self, vocab_size) :
-        
-        file_path = ''
-        self.vocab_size = vocab_size
-
-        if vocab_size == 6524 : # 마침표, 쉼표 제거 + 쉼표를 vocab에 포함 (with <unk> token)
-            # 1440개 단어가 Clotho에만 존재
-            file_path = './Clotho/Clotho_vocabulary_6524.pickle'
-        elif vocab_size == 10627 : # 마침표 제거 X (with <unk> token)
-            # 2716개 단어가 Clotho에만 존재
-            file_path = './Clotho/Clotho_vocabulary_10627.pickle'
-        elif vocab_size == 6427 : # Clotho == ACT, [walkietalkie walkie-talkie] 말고 구성요소는 다 똑같음 (index별 값도 다 똑같음)
-            # 1435개 단어가 Clotho에만 존재
-            file_path = './Clotho/Clotho_vocabulary_6427.pickle'
-        
-        with open(file_path, 'rb') as f:
-            self.vocab = pickle.load(f) 
+from util import *
 
 class ClothoDataset(Dataset):
     
@@ -105,7 +45,7 @@ class ClothoDataset(Dataset):
         self.caption_list_for_test = []
         
         csv_file = pd.read_csv(csv_file_path)
-        # audio의 경로, audio에 해당하는 caption을 리스트에 추가
+        
         for file in tqdm(audio_file_list, desc = 'get dataset...') :
            
             audio_file_full_path = self.audio_files_dir + '/' + file
@@ -119,32 +59,12 @@ class ClothoDataset(Dataset):
                 sentence_str = 'caption_' + str(i + 1)
                 caption = csv_file[csv_file['file_name'] == file][sentence_str].item()
 
-                caption = caption.lower()
-                    
-                # 문장 교정================================
-                caption = caption.replace(',', ' , ') 
-                # 공백 줄이기
-                caption = re.sub(' +', ' ', caption)
-                caption = caption.replace(' ,', ',')
-                
-                # Clotho는 가지고 있는 caption에 있는 모든 문장기호를 제거했다
-                # 혹시나 마침표가 들어있는 경우 처리해준다
-                caption = re.sub(r'[.]', '', caption)
+                caption = caption.lower()    
+                caption = fix_grammer_issue(caption)
                 
                 if split != 'development' :
                     self.caption_list_for_test.append(caption)
-                        
-                if tokenizer.vocab_size == 6427 :
-                    caption = caption.translate(str.maketrans('', '', string.punctuation))
-                elif (tokenizer.vocab_size == 10627) or (tokenizer_type == 'GPT2') or (tokenizer.vocab_size == 6524) :
-                    caption = re.sub(r'[.]', '', caption)
-                    if (tokenizer.vocab_size == 10627) or (tokenizer_type == 'GPT2'):
-                        caption += '.'
-                    
-                caption = caption.strip()
-                # 문장 교정================================
-                
-                if split == 'development' :
+                elif split == 'development' :
                     if tokenizer_type == 'GPT2' :
                         tokens = tokenizer(caption)['input_ids']
                     else :
@@ -185,24 +105,3 @@ class ClothoDataset(Dataset):
             return self.audio_file_list[item], tokens, mask, self.audio_name_list[item]
         else :
             return self.audio_file_list[item], self.caption_list_for_test[item], self.audio_name_list[item]
-    
-
-def dataloader_ClothoDataset(tokenizer, data_dir, batch_size, split, prefix_size, is_TrainDataset = False, tokenizer_type = 'GPT2') :
-    
-    dataset = ClothoDataset(tokenizer, data_dir, split, prefix_size, tokenizer_type = tokenizer_type)
-    
-    if is_TrainDataset == True :
-        is_shuffle = True
-        is_drop_last = True
-    else :
-        is_shuffle = False
-        is_drop_last = False
-        
-    cpu_core_num = 8
-    dataloader = DataLoader(dataset=dataset,
-                      batch_size=batch_size,
-                      shuffle=is_shuffle,
-                      num_workers=cpu_core_num,
-                      drop_last=is_drop_last)
-    
-    return dataloader
