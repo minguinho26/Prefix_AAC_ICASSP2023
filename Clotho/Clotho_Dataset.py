@@ -6,9 +6,6 @@ import torchaudio
 import os
 from tqdm import tqdm
 import re
-import string
-
-from util import *
 
 class ClothoDataset(Dataset):
     
@@ -60,11 +57,19 @@ class ClothoDataset(Dataset):
                 caption = csv_file[csv_file['file_name'] == file][sentence_str].item()
 
                 caption = caption.lower()    
-                caption = fix_grammer_issue(caption)
+                
+                caption = caption.replace(',', ' , ') 
+                caption = re.sub(' +', ' ', caption)
+                caption = caption.replace(' ,', ',')
+                caption = re.sub(r'[.]', '', caption)
+                
                 
                 if split != 'development' :
                     self.caption_list_for_test.append(caption)
-                elif split == 'development' :
+                elif split == 'development' : 
+                    caption += '.'
+                    caption = caption.strip()
+                    
                     if tokenizer_type == 'GPT2' :
                         tokens = tokenizer(caption)['input_ids']
                     else :

@@ -5,8 +5,9 @@ import pandas as pd
 import torchaudio
 import os
 from tqdm import tqdm
+import re
 
-from util import *
+import util
 
 class AudioCapsDataset(Dataset):
     def __init__(self, tokenizer, data_dir, split, prefix_size, tokenizer_type = 'GPT2') :  # split = 'train' or 'test'
@@ -34,11 +35,18 @@ class AudioCapsDataset(Dataset):
                     self.path_list.append(file)
                     
                     caption = caption.lower()
-                    caption = fix_grammer_issue(caption)
+                    
+                    caption = caption.replace(',', ' , ') 
+                    caption = re.sub(' +', ' ', caption)
+                    caption = caption.replace(' ,', ',')
+                    caption = re.sub(r'[.]', '', caption)
 
                     if split != 'train' :
                         self.caption_list_for_test.append(caption)
                     elif split == 'train' :
+                        caption += '.'
+                        caption = caption.strip()
+                        
                         if tokenizer_type == 'GPT2' :
                             tokens = tokenizer(caption)['input_ids']
                         else :

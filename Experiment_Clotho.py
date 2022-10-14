@@ -45,14 +45,13 @@ audio_prefix_size = 15
 semantic_prefix_size = 11 
 prefix_size = audio_prefix_size + semantic_prefix_size
 
-transformer_num_layers = {"audio_num_layers" : 4, "semantic_num_layers" : 4}
-prefix_size_dict = {"audio_prefix_size" : audio_prefix_size, "semantic_prefix_size" : semantic_prefix_size}
+transformer_num_layers = {"temporal_num_layers" : 4, "global_num_layers" : 4}
+prefix_size_dict = {"temporal_prefix_size" : audio_prefix_size, "global_prefix_size" : semantic_prefix_size}
 
 vocab_size = None
 tokenizer_type = None
 
 if len(sys.argv) == argv_num_with_custom_tokenizer:
-    vocab_size = int(sys.argv[2])
     tokenizer = tokenizer_forCustomVocab(Dataset = 'Clotho')
     tokenizer_type = 'Custom'
 else :
@@ -62,20 +61,28 @@ else :
 TEST_BATCH_SIZE = 5
 TRAIN_BATCH_SIZE = 75
 
-CreateDataloader(tokenizer, data_dir, TRAIN_BATCH_SIZE, 'train', prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
-
 test_dataloader  = CreateDataloader(tokenizer, data_dir, TEST_BATCH_SIZE, 'evaluation', prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
 train_dataloader = CreateDataloader(tokenizer, data_dir, TRAIN_BATCH_SIZE, 'development', prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
+
+# control randomness
+random_seed = 1000
+torch.manual_seed(random_seed)
+torch.cuda.manual_seed(random_seed)
+torch.cuda.manual_seed_all(random_seed) 
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 
 #============실험================
 torch.cuda.empty_cache()
 
 MODEL_NAME = sys.argv[1] + '_clotho'
+if tokenizer_type == 'Custom':
+    MODEL_NAME += '_CustomHeader' 
 
 createDirectory(MODEL_NAME)
 
 USE_CUDA = torch.cuda.is_available() 
-device = torch.device('cuda' if USE_CUDA else 'cpu')
+device = torch.device('cuda:0' if USE_CUDA else 'cpu')
 
 model = get_ClipCap_AAC(tokenizer, 
                         vocab_size = vocab_size, Dataset = 'Clotho',

@@ -46,20 +46,6 @@ class tokenizer_forCustomVocab() :
             file_path = './Clotho/Clotho_vocabulary.pickle'
             with open(file_path, 'rb') as f:
                 self.vocab = pickle.load(f) 
-
-def fix_grammer_issue(sentence) :
-    # fix grammar issues================================
-    sentence = sentence.replace(',', ' , ') 
-
-    sentence = re.sub(' +', ' ', sentence)
-    sentence = sentence.replace(' ,', ',')
-                
-
-    if sentence[-1] != '.' :
-        sentence += '.'
-    # fix grammar issues================================
-
-    return sentence
         
 def CreateDataloader(tokenizer, data_dir, batch_size, split, prefix_size, is_TrainDataset = False, tokenizer_type = 'GPT2') :
 

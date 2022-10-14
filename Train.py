@@ -31,7 +31,7 @@ def Train(model, LR, train_dataloader, test_dataloader, epochs, model_name, beam
     scheduler = get_cosine_schedule_with_warmup(
     optimizer, num_warmup_steps=warmup_steps, num_training_steps=num_training_steps)
     
-    prefix_length = model.audio_prefix_length + model.semantic_prefix_length
+    prefix_length = model.temporal_prefix_length + model.global_prefix_length
     
     training_consumed_sec = 0
     
@@ -66,10 +66,11 @@ def Train(model, LR, train_dataloader, test_dataloader, epochs, model_name, beam
         training_consumed_sec += (time.time() - train_start_time_per_epoch)
         
         if (epoch >= 14) and ((epoch + 1) % 5 == 0) : 
-            eval_model(model, test_dataloader, epoch, model_name, beam_search, device)
+            
+            eval_model(model, test_dataloader, epoch, model_name, beam_search, device, Dataset)
             model.train()
             
-        if (epoch + 1 == 16) and Dataset == 'AudioCaps' :
+        if (epoch + 1 == 16) and (Dataset == 'AudioCaps' or Dataset == 'Fusion') :
             for param in model.audio_encoder.parameters():
                 param.requires_grad = False
         elif Dataset == 'Clotho' and (epoch + 1 == 30) : # epoch : 60
@@ -85,14 +86,21 @@ def Train(model, LR, train_dataloader, test_dataloader, epochs, model_name, beam
     print("Training time :", result_list[0])
 
 
-def eval_model(model, test_dataloader, epoch, model_name, beam_search, device) :
+def eval_model(model, test_dataloader, epoch, model_name, beam_search, device, Dataset) :
     
     model.eval()
     model.to(device)
 
     # 모아놨다가 한 번에 평가하자
-    captions_pred: List[Dict] = []
-    captions_gt: List[Dict] = []
+    if Dataset != 'Fusion' :
+        captions_pred: List[Dict] = []
+        captions_gt: List[Dict] = []
+    else :
+        captions_pred_audiocaps: List[Dict] = []
+        captions_gt_audiocaps: List[Dict] = []
+            
+        captions_pred_clotho: List[Dict] = []
+        captions_gt_clotho: List[Dict] = []
     
     for i, (audio, captions, f_names) in enumerate(tqdm(test_dataloader, desc="Eval...")):
         with torch.no_grad():
@@ -108,50 +116,83 @@ def eval_model(model, test_dataloader, epoch, model_name, beam_search, device) :
                 pred_caption = model(audio, None, beam_search = True)[0][0]
             else :
                 pred_caption = model(audio, None, beam_search = False)[0]
-
-        captions_pred.append({
-                        'file_name': f_names[0], 
-                        'caption_predicted': pred_caption})
-        captions_gt.append({
-                        'file_name': f_names[0],
-                        'caption_reference_01': captions[0],
-                        'caption_reference_02': captions[1],
-                        'caption_reference_03': captions[2],
-                        'caption_reference_04': captions[3],
-                        'caption_reference_05': captions[4]})
+        
+        
+        if Dataset != 'Fusion':
+        
+            captions_pred.append({
+                            'file_name': f_names[0], 
+                            'caption_predicted': pred_caption})
+            captions_gt.append({
+                            'file_name': f_names[0],
+                            'caption_reference_01': captions[0],
+                            'caption_reference_02': captions[1],
+                            'caption_reference_03': captions[2],
+                            'caption_reference_04': captions[3],
+                            'caption_reference_05': captions[4]})
+        else :
+            if i < 957 : # AudioCaps
+                captions_pred_audiocaps.append({
+                            'file_name': f_names[0], 
+                            'caption_predicted': pred_caption})
+                captions_gt_audiocaps.append({
+                            'file_name': f_names[0],
+                            'caption_reference_01': captions[0],
+                            'caption_reference_02': captions[1],
+                            'caption_reference_03': captions[2],
+                            'caption_reference_04': captions[3],
+                            'caption_reference_05': captions[4]})
+            else :
+                captions_pred_clotho.append({
+                            'file_name': f_names[0], 
+                            'caption_predicted': pred_caption})
+                captions_gt_clotho.append({
+                            'file_name': f_names[0],
+                            'caption_reference_01': captions[0],
+                            'caption_reference_02': captions[1],
+                            'caption_reference_03': captions[2],
+                            'caption_reference_04': captions[3],
+                            'caption_reference_05': captions[4]})
     
     # 전체 측정값을 한 번에 method에 넣어서 측정
-    metrics = evaluate_metrics(captions_pred, captions_gt)
+    if Dataset != 'Fusion' :
+        metrics = evaluate_metrics(captions_pred, captions_gt)
+        return metrics, captions_pred, captions_gt
+    else :
+        print("============AuidioCaps metric============")
+        metrics_audiocaps = evaluate_metrics(captions_pred_audiocaps, captions_gt_audiocaps)
+        print("============Clotho metric============")
+        metrics_clotho = evaluate_metrics(captions_pred_clotho, captions_gt_clotho)
+        
+        return [metrics_audiocaps, captions_pred_audiocaps, captions_gt], [metrics_clotho, captions_pred_clotho, captions_gt_clotho]
     
-    return metrics, captions_pred, captions_gt
+    # total_results = {}
+    # total_results['BLUE_1'] = metrics['bleu_1']['score']
+    # total_results['BLUE_2'] = metrics['bleu_2']['score']
+    # total_results['BLUE_3'] = metrics['bleu_3']['score']
+    # total_results['BLUE_4'] = metrics['bleu_4']['score']
+    # total_results['METEOR'] = metrics['meteor']['score']
+    # total_results['ROUGE_l'] = metrics['rouge_l']['score']
+    # total_results['CIDEr'] = metrics['cider']['score']
+    # total_results['SPICE'] = metrics['spice']['score']
+    # total_results['SPIDEr'] = metrics['spider']['score']  
     
-    total_results = {}
-    total_results['BLUE_1'] = metrics['bleu_1']['score']
-    total_results['BLUE_2'] = metrics['bleu_2']['score']
-    total_results['BLUE_3'] = metrics['bleu_3']['score']
-    total_results['BLUE_4'] = metrics['bleu_4']['score']
-    total_results['METEOR'] = metrics['meteor']['score']
-    total_results['ROUGE_l'] = metrics['rouge_l']['score']
-    total_results['CIDEr'] = metrics['cider']['score']
-    total_results['SPICE'] = metrics['spice']['score']
-    total_results['SPIDEr'] = metrics['spider']['score']  
-    
-    print("total result")
-    print(AsciiTable(
-                    [
-                        ["Type", "Value"],
-                        ["BLEU_1", format(round(float(total_results['BLUE_1']), 6), 'f')],
-                        ["BLEU_2", format(round(float(total_results['BLUE_2']), 6), 'f')],
-                        ["BLEU_3", format(round(float(total_results['BLUE_3']), 6), 'f')],
-                        ["BLEU_4", format(round(float(total_results['BLUE_4']), 6), 'f')],
-                        ["METEOR", format(round(float(total_results['METEOR']), 6), 'f')],
-                        ["ROUGE_l", format(round(float(total_results['ROUGE_l']), 6), 'f')],
-                        ["CIDEr", format(round(float(total_results['CIDEr']), 6), 'f')],
-                        ["SPICE", format(round(float(total_results['SPICE']), 6), 'f')],
-                        ["SPIDEr", format(round(float(total_results['SPIDEr']), 6), 'f')]
-                    ]).table)    
+    # print("total result")
+    # print(AsciiTable(
+    #                 [
+    #                     ["Type", "Value"],
+    #                     ["BLEU_1", format(round(float(total_results['BLUE_1']), 6), 'f')],
+    #                     ["BLEU_2", format(round(float(total_results['BLUE_2']), 6), 'f')],
+    #                     ["BLEU_3", format(round(float(total_results['BLUE_3']), 6), 'f')],
+    #                     ["BLEU_4", format(round(float(total_results['BLUE_4']), 6), 'f')],
+    #                     ["METEOR", format(round(float(total_results['METEOR']), 6), 'f')],
+    #                     ["ROUGE_l", format(round(float(total_results['ROUGE_l']), 6), 'f')],
+    #                     ["CIDEr", format(round(float(total_results['CIDEr']), 6), 'f')],
+    #                     ["SPICE", format(round(float(total_results['SPICE']), 6), 'f')],
+    #                     ["SPIDEr", format(round(float(total_results['SPIDEr']), 6), 'f')]
+    #                 ]).table)    
 
-    # 결과 저장 
-    result_file_path = './eval_result/epoch_' + str(epoch) + '_' + model_name + '.pkl' 
-    with open(result_file_path,'wb') as f:
-        pickle.dump(total_results, f)
+    # # 결과 저장 
+    # result_file_path = './eval_result/epoch_' + str(epoch) + '_' + model_name + '.pkl' 
+    # with open(result_file_path,'wb') as f:
+    #     pickle.dump(total_results, f)

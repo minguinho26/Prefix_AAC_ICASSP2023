@@ -69,7 +69,6 @@ gdown https://drive.google.com/file/d/1Eh-g3FCZg9UKYbnL5pNGMN1g7IcYQ-ND/view?usp
 5. 다운로드 받은 Trained_model_params.zip을 압축해제 합니다.
 
 
-
 <br>
 
 # 학습 방법 

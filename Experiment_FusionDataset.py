@@ -38,8 +38,8 @@ temporal_prefix_size = 15
 global_prefix_size = 11 
 prefix_size = temporal_prefix_size + global_prefix_size
 
-transformer_num_layers = {"audio_num_layers" : 4, "semantic_num_layers" : 4}
-prefix_size_dict = {"audio_prefix_size" : temporal_prefix_size, "semantic_prefix_size" : global_prefix_size}
+transformer_num_layers = {"temporal_num_layers" : 4, "global_num_layers" : 4}
+prefix_size_dict = {"temporal_prefix_size" : temporal_prefix_size, "global_prefix_size" : global_prefix_size}
 
 # argv의 개수가 2개다 : custom vocab을 사용했다
 vocab_size = None
@@ -53,6 +53,14 @@ TRAIN_BATCH_SIZE = 62
 test_dataloader  = dataloader_FusionDataset(tokenizer, TEST_BATCH_SIZE, 'test', prefix_size, is_TrainDataset = False)
 train_dataloader = dataloader_FusionDataset(tokenizer, TRAIN_BATCH_SIZE, 'train', prefix_size, is_TrainDataset = True)
 
+# control randomness
+random_seed = 1000
+torch.manual_seed(random_seed)
+torch.cuda.manual_seed(random_seed)
+torch.cuda.manual_seed_all(random_seed) 
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+
 #============실험================
 torch.cuda.empty_cache()
 
@@ -64,14 +72,14 @@ USE_CUDA = torch.cuda.is_available()
 device = torch.device('cuda:0' if USE_CUDA else 'cpu')
 
 model = get_ClipCap_AAC(tokenizer, 
-                        vocab_size = vocab_size, Dataset = 'AudioCaps',
+                        vocab_size = vocab_size, Dataset = 'Fusion',
                         prefix_size_dict = prefix_size_dict, transformer_num_layers = transformer_num_layers, 
                         encoder_freeze = False, decoder_freeze = True,
                         pretrain_fromAudioCaps = False, device = device)
 
 Train(model, LR, train_dataloader, test_dataloader,
     epochs, model_name = MODEL_NAME, beam_search = True, device = device,
-    Dataset = 'AudioCaps') # Dataset별 학습전략이 다른데 나는 AudioCaps의 학습전략을 써야겠다.
+    Dataset = 'Fusion')
 
 torch.cuda.empty_cache()
 #============실험================
