@@ -1,5 +1,6 @@
 import pickle
 import re
+import csv
 from torch.utils.data import DataLoader
 
 from AudioCaps.AudioCaps_Dataset import *
@@ -31,7 +32,10 @@ class tokenizer_forCustomVocab() :
                 sentence += self.vocab[idx] + ' '
 
         sentence = sentence.rstrip()
+        sentence = re.sub(r'[.]', '', sentence)
 
+        sentence += '.'
+        
         return sentence
 
     def __init__(self, Dataset) : # Dataset = 'AudioCaps' or 'Clotho'
@@ -69,3 +73,18 @@ def CreateDataloader(tokenizer, data_dir, batch_size, split, prefix_size, is_Tra
                       drop_last=is_drop_last)
     
     return dataloader
+
+def get_pred_captions(model, test_dataloader, device, dataset = 'AudioCaps') :
+    model.eval()
+    
+    with open(f"{dataset}_pred_captions.csv", "w") as f:
+        writer = csv.writer(f)
+        writer.writerow(['file_name', 'caption'])
+        for i, (audio, captions, f_names) in enumerate(tqdm(test_dataloader, desc="Get Caption...")):
+            with torch.no_grad() :
+                audio = audio.to(device)
+                audio = audio[0,:].unsqueeze(0)
+
+                pred_caption = model(audio, None, beam_search = True)[0][0]
+
+                writer.writerow([f_names[0], pred_caption])

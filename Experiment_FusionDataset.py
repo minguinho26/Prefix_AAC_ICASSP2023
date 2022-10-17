@@ -1,12 +1,24 @@
 import torch
 import os
 import sys
+import random
 
 # custom
 from FusionDataset import * # 데이터셋
 from transformers import GPT2Tokenizer
 from ClipCap_forAAC.CLIPCAP_forAAC import * # network
 from Train import *
+
+# reproducibility
+def initialization(seed = 0):   
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+#     torch.cuda.manual_seed_all(seed) # multi-GPU
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    os.environ['PYTHONHASHSEED'] = str(seed) 
 
 # 폴더 생성 메소드
 def createDirectory(MODEL_NAME):
@@ -54,12 +66,10 @@ test_dataloader  = dataloader_FusionDataset(tokenizer, TEST_BATCH_SIZE, 'test', 
 train_dataloader = dataloader_FusionDataset(tokenizer, TRAIN_BATCH_SIZE, 'train', prefix_size, is_TrainDataset = True)
 
 # control randomness
-random_seed = 1000
-torch.manual_seed(random_seed)
-torch.cuda.manual_seed(random_seed)
-torch.cuda.manual_seed_all(random_seed) 
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
+number = 2766
+print("random seed : ", 2766)
+
+initialization(seed = 2766)  
 
 #============실험================
 torch.cuda.empty_cache()
@@ -72,7 +82,7 @@ USE_CUDA = torch.cuda.is_available()
 device = torch.device('cuda:0' if USE_CUDA else 'cpu')
 
 model = get_ClipCap_AAC(tokenizer, 
-                        vocab_size = vocab_size, Dataset = 'Fusion',
+                        vocab_size = vocab_size, Dataset = 'AudioCaps',
                         prefix_size_dict = prefix_size_dict, transformer_num_layers = transformer_num_layers, 
                         encoder_freeze = False, decoder_freeze = True,
                         pretrain_fromAudioCaps = False, device = device)

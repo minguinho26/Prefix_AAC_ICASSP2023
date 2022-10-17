@@ -34,19 +34,20 @@ class AudioCapsDataset(Dataset):
                 for caption in captions : 
                     self.path_list.append(file)
                     
-                    caption = caption.lower()
-                    
+                    caption = caption.lower()    
+                
                     caption = caption.replace(',', ' , ') 
                     caption = re.sub(' +', ' ', caption)
                     caption = caption.replace(' ,', ',')
                     caption = re.sub(r'[.]', '', caption)
 
+                    caption = caption.strip()
+
+                    caption += '.'
+                    
                     if split != 'train' :
                         self.caption_list_for_test.append(caption)
                     elif split == 'train' :
-                        caption += '.'
-                        caption = caption.strip()
-                        
                         if tokenizer_type == 'GPT2' :
                             tokens = tokenizer(caption)['input_ids']
                         else :

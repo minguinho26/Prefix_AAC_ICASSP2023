@@ -282,11 +282,32 @@ class ClipCap_AAC(nn.Module):
         
         temporal_feature, global_feature = self.audio_encoder(audio)
         
-        temporal_prefix_vector = self.temporal_mappingnetwork(temporal_feature).view(-1, self.temporal_prefix_length, self.gpt_embedding_size)
-        
-        global_prefix_vector = self.global_mappingnetwork(global_feature).view(-1, self.global_prefix_length, self.gpt_embedding_size)
-        
-        prefix_vectors = torch.cat((temporal_prefix_vector, global_prefix_vector), dim=1) 
+        if self.temporal_prefix_length > 0 :
+            temporal_prefix_vector = self.temporal_mappingnetwork(temporal_feature).view(-1, self.temporal_prefix_length, self.gpt_embedding_size)
+        elif self.global_prefix_length + self.temporal_prefix_length == 0  :
+            temporal_feature = temporal_feature.permute(0,2,1,3).contiguous()
+            temporal_feature = torch.reshape(temporal_feature, (temporal_feature.size()[0], temporal_feature.size()[1], -1))  
+            temporal_prefix_vector = self.temporal_mappingnetwork(temporal_feature)
+            
+        if self.global_prefix_length > 0 :
+            global_prefix_vector = self.global_mappingnetwork(global_feature).view(-1, self.global_prefix_length, self.gpt_embedding_size)
+        elif self.global_prefix_length + self.temporal_prefix_length == 0 :
+            global_prefix_vector = self.global_mappingnetwork(global_feature)
+            global_prefix_vector = global_prefix_vector.view(global_feature.size()[0], 11, 768)
+            
+            
+            
+        if self.temporal_prefix_length > 0 and self.global_prefix_length == 0 :
+            prefix_vectors = temporal_prefix_vector
+        elif self.temporal_prefix_length == 0 and self.global_prefix_length > 0 :
+            prefix_vectors = global_prefix_vector
+        else :
+            prefix_vectors = torch.cat((temporal_prefix_vector, global_prefix_vector), dim=1) 
+            
+            
+#         prefix_vectors = torch.cat((temporal_prefix_vector, global_prefix_vector), dim=1) 
+#         prefix_vectors = temporal_prefix_vector
+#         prefix_vectors = global_prefix_vector
         if self.training :
             embedding_text = self.gpt.wte(tokens.to(self.device))
             embedding_cat = torch.cat((prefix_vectors, embedding_text), dim=1)
@@ -336,14 +357,23 @@ class ClipCap_AAC(nn.Module):
         self.gpt = GPT2Model.from_pretrained("gpt2")
 
         self.gpt_embedding_size = self.gpt.wte.weight.shape[1] # 768
-
-        self.temporal_mappingnetwork = MappingNetwork_forTemporalFeature(dim_embedding = self.gpt_embedding_size, 
-                                    prefix_length = self.temporal_prefix_length, clip_length = temporal_clip_length, 
-                                    num_layers = temporal_num_layers, device = device, Dataset = Dataset)   
         
-        self.global_mappingnetwork = MappingNetwork_forGlobalFeature(dim_embedding = self.gpt_embedding_size, 
-                                            prefix_length = self.global_prefix_length, clip_length = global_clip_length, 
-                                            num_layers = global_num_layers, device = device, Dataset = Dataset)
+        
+        if self.temporal_prefix_length > 0 :
+            self.temporal_mappingnetwork = MappingNetwork_forTemporalFeature(dim_embedding = self.gpt_embedding_size, 
+                                        prefix_length = self.temporal_prefix_length, clip_length = temporal_clip_length, 
+                                        num_layers = temporal_num_layers, device = device, Dataset = Dataset)   
+        else :
+            self.temporal_mappingnetwork = nn.Linear(2048*2, 768, bias = False)
+            nn.init.kaiming_uniform_(self.temporal_mappingnetwork.weight)  
+            
+        if self.global_prefix_length > 0 :
+            self.global_mappingnetwork = MappingNetwork_forGlobalFeature(dim_embedding = self.gpt_embedding_size, 
+                                                prefix_length = self.global_prefix_length, clip_length = global_clip_length, 
+                                                num_layers = global_num_layers, device = device, Dataset = Dataset)
+        else :
+            self.global_mappingnetwork = nn.Linear(527, 11*768, bias = False)
+            nn.init.kaiming_uniform_(self.global_mappingnetwork.weight)  
         
         self.language_header = None
         
@@ -369,25 +399,27 @@ class ClipCap_AAC(nn.Module):
             print("Get Pre-traiend Params")
             
             if vocab_size != None : 
-                folder_name = vocab_size_audiocaps
+                folder_name = 'Custom'
             elif vocab_size == None : # GPT2 Tokenizer
-                folder_name = 'GPT2_freeze'
+                folder_name = 'GPT2'
                   
-            temporal_clip_project_pt_name = 'temporal_clip_project_' + str(folder_name) + '_in_Audiocaps.pt'
-            global_clip_project_pt_name = 'global_clip_project_' + str(folder_name) + '_in_Audiocaps.pt'
+            temporal_mappingnetwork_pt_name = 'temporal_mappingnetwork_' + str(folder_name) + '_in_Audiocaps.pt'
+            global_mappingnetwork_pt_name = 'global_mappingnetwork_' + str(folder_name) + '_in_Audiocaps.pt'
             language_header_pt_name = 'language_header_' + str(folder_name) + '_in_Audiocaps.pt'
 
-            temporal_clip_project_path = './ClipCap_forAAC/pre_trained_params_from_audiocaps/' + \
-                                       str(folder_name) + '/' + temporal_clip_project_pt_name
-            global_clip_project_path = './ClipCap_forAAC/pre_trained_params_from_audiocaps/' + \
-                                         str(folder_name) + '/' + global_clip_project_pt_name
+            temporal_mappingnetwork_path = './ClipCap_forAAC/pre_trained_params_from_audiocaps/' + \
+                                       str(folder_name) + '/' + temporal_mappingnetwork_pt_name
+            global_mappingnetwork_path = './ClipCap_forAAC/pre_trained_params_from_audiocaps/' + \
+                                         str(folder_name) + '/' + global_mappingnetwork_pt_name
             language_header_path = './ClipCap_forAAC/pre_trained_params_from_audiocaps/' + \
                                          str(folder_name) + '/' + language_header_pt_name
             
-            self.temporal_clip_project.load_state_dict(torch.load(temporal_clip_project_path))
-            self.global_clip_project.load_state_dict(torch.load(global_clip_project_path))
+            if self.temporal_prefix_length == 15 :
+                    self.temporal_mappingnetwork.load_state_dict(torch.load(temporal_mappingnetwork_path))
+            if self.global_prefix_length == 11 :
+                self.global_mappingnetwork.load_state_dict(torch.load(global_mappingnetwork_path))
             
-            if folder_name != 'GPT2_freeze' :
+            if folder_name != 'GPT2' :
                 print("Get Pre-traiend language header")
                 self.language_header.load_state_dict(torch.load(language_header_path))
 
@@ -400,8 +432,8 @@ class ClipCap_AAC(nn.Module):
             for param in self.gpt.parameters():
                 param.requires_grad = False
                 
-            for param in self.language_header.parameters():
-                param.requires_grad = False
+#             for param in self.language_header.parameters():
+#                 param.requires_grad = False
             print("GPT2 freezing")
             
                 

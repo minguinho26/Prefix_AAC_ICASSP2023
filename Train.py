@@ -2,6 +2,7 @@ from transformers import AdamW, get_cosine_schedule_with_warmup, get_constant_sc
 from tqdm import tqdm
 import time
 import datetime
+import csv
 
 import torch
 import torch.nn as nn
@@ -24,14 +25,37 @@ def Train(model, LR, train_dataloader, test_dataloader, epochs, model_name, beam
     
     # AudioCaps를 사용할 경우 optimizer의 weight_decay는 0.01이 됨
     if Dataset == 'AudioCaps' :
-        optimizer = AdamW(model.parameters(), lr=LR, weight_decay = 0.01)
+#         optimizer = AdamW(model.parameters(), lr=LR, weight_decay = 0.01)
+        optimizer = AdamW(
+                          [
+                            {"params": model.audio_encoder.parameters(), "lr": 2e-5},
+                            {"params": model.temporal_mappingnetwork.parameters(), "lr": 5e-5},
+                            {"params": model.global_mappingnetwork.parameters(), "lr": 5e-5},
+                            {"params": model.language_header.parameters(), "lr": 5e-5},
+                           ],lr=LR, weight_decay = 0.01)
+        
     else :
-        optimizer = AdamW(model.parameters(), lr=LR, weight_decay = 0.02)
+#         optimizer = AdamW(model.parameters(), lr=LR, weight_decay = 0.02)
+        # 기본이 5e-5
+        optimizer = AdamW(
+                          [
+                            {"params": model.audio_encoder.parameters(), "lr": 2e-5},
+                            {"params": model.temporal_mappingnetwork.parameters(), "lr": 5e-5},
+                            {"params": model.global_mappingnetwork.parameters(), "lr": 5e-5},
+                            {"params": model.lastlayer.parameters(), "lr": 4e-2},
+                           ],lr=LR, weight_decay = 0.02)
         
     scheduler = get_cosine_schedule_with_warmup(
     optimizer, num_warmup_steps=warmup_steps, num_training_steps=num_training_steps)
     
     prefix_length = model.temporal_prefix_length + model.global_prefix_length
+    
+#     if model.temporal_prefix_length == 0 :
+#         prefix_length += 15
+#     if model.global_prefix_length == 0 :
+#         prefix_length += 11
+    
+#     prefix_length = 15
     
     training_consumed_sec = 0
     
@@ -117,36 +141,11 @@ def eval_model(model, test_dataloader, epoch, model_name, beam_search, device, D
             else :
                 pred_caption = model(audio, None, beam_search = False)[0]
         
-        
-        if Dataset != 'Fusion':
-        
-            captions_pred.append({
+
+        captions_pred.append({
                             'file_name': f_names[0], 
                             'caption_predicted': pred_caption})
-            captions_gt.append({
-                            'file_name': f_names[0],
-                            'caption_reference_01': captions[0],
-                            'caption_reference_02': captions[1],
-                            'caption_reference_03': captions[2],
-                            'caption_reference_04': captions[3],
-                            'caption_reference_05': captions[4]})
-        else :
-            if i < 957 : # AudioCaps
-                captions_pred_audiocaps.append({
-                            'file_name': f_names[0], 
-                            'caption_predicted': pred_caption})
-                captions_gt_audiocaps.append({
-                            'file_name': f_names[0],
-                            'caption_reference_01': captions[0],
-                            'caption_reference_02': captions[1],
-                            'caption_reference_03': captions[2],
-                            'caption_reference_04': captions[3],
-                            'caption_reference_05': captions[4]})
-            else :
-                captions_pred_clotho.append({
-                            'file_name': f_names[0], 
-                            'caption_predicted': pred_caption})
-                captions_gt_clotho.append({
+        captions_gt.append({
                             'file_name': f_names[0],
                             'caption_reference_01': captions[0],
                             'caption_reference_02': captions[1],
@@ -165,34 +164,3 @@ def eval_model(model, test_dataloader, epoch, model_name, beam_search, device, D
         metrics_clotho = evaluate_metrics(captions_pred_clotho, captions_gt_clotho)
         
         return [metrics_audiocaps, captions_pred_audiocaps, captions_gt], [metrics_clotho, captions_pred_clotho, captions_gt_clotho]
-    
-    # total_results = {}
-    # total_results['BLUE_1'] = metrics['bleu_1']['score']
-    # total_results['BLUE_2'] = metrics['bleu_2']['score']
-    # total_results['BLUE_3'] = metrics['bleu_3']['score']
-    # total_results['BLUE_4'] = metrics['bleu_4']['score']
-    # total_results['METEOR'] = metrics['meteor']['score']
-    # total_results['ROUGE_l'] = metrics['rouge_l']['score']
-    # total_results['CIDEr'] = metrics['cider']['score']
-    # total_results['SPICE'] = metrics['spice']['score']
-    # total_results['SPIDEr'] = metrics['spider']['score']  
-    
-    # print("total result")
-    # print(AsciiTable(
-    #                 [
-    #                     ["Type", "Value"],
-    #                     ["BLEU_1", format(round(float(total_results['BLUE_1']), 6), 'f')],
-    #                     ["BLEU_2", format(round(float(total_results['BLUE_2']), 6), 'f')],
-    #                     ["BLEU_3", format(round(float(total_results['BLUE_3']), 6), 'f')],
-    #                     ["BLEU_4", format(round(float(total_results['BLUE_4']), 6), 'f')],
-    #                     ["METEOR", format(round(float(total_results['METEOR']), 6), 'f')],
-    #                     ["ROUGE_l", format(round(float(total_results['ROUGE_l']), 6), 'f')],
-    #                     ["CIDEr", format(round(float(total_results['CIDEr']), 6), 'f')],
-    #                     ["SPICE", format(round(float(total_results['SPICE']), 6), 'f')],
-    #                     ["SPIDEr", format(round(float(total_results['SPIDEr']), 6), 'f')]
-    #                 ]).table)    
-
-    # # 결과 저장 
-    # result_file_path = './eval_result/epoch_' + str(epoch) + '_' + model_name + '.pkl' 
-    # with open(result_file_path,'wb') as f:
-    #     pickle.dump(total_results, f)

@@ -1,6 +1,7 @@
 import torch
 import os
 import sys
+import random
 
 # custom
 from util import *
@@ -9,6 +10,18 @@ from ClipCap_forAAC.CLIPCAP_forAAC import * # network
 from Train import *
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning) 
+
+# reproducibility
+def initialization(seed = 0):   
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+#     torch.cuda.manual_seed_all(seed) # multi-GPU
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    os.environ['PYTHONHASHSEED'] = str(seed) 
+
 
 # 폴더 생성 메소드
 def createDirectory(MODEL_NAME):
@@ -50,29 +63,32 @@ prefix_size = audio_prefix_size + semantic_prefix_size
 transformer_num_layers = {"temporal_num_layers" : 4, "global_num_layers" : 4}
 prefix_size_dict = {"temporal_prefix_size" : audio_prefix_size, "global_prefix_size" : semantic_prefix_size}
 
+# prefix_size_dict = {"temporal_prefix_size" : 0, "global_prefix_size" : 0} # mapping network not used
+
 vocab_size = None
 tokenizer_type = None
 
 if len(sys.argv) == argv_num_with_custom_tokenizer:
     tokenizer = tokenizer_forCustomVocab(Dataset = 'AudioCaps')
     tokenizer_type = 'Custom'
+    vocab_size = len(tokenizer.vocab)
 else :
     tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
     tokenizer_type = 'GPT2'
 
+# control randomness
+# number = int(random.uniform(0.0, 9999.0))
+number = 2766
+print("random seed : ", 2766)
+
+initialization(seed = 2766)    
+
+    
 TEST_BATCH_SIZE = 5
 TRAIN_BATCH_SIZE = 75
 
 test_dataloader  = CreateDataloader(tokenizer, data_dir, TEST_BATCH_SIZE, 'test', prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
 train_dataloader = CreateDataloader(tokenizer, data_dir, TRAIN_BATCH_SIZE, 'train', prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
-
-# control randomness
-random_seed = 1000
-torch.manual_seed(random_seed)
-torch.cuda.manual_seed(random_seed)
-torch.cuda.manual_seed_all(random_seed) 
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
 
 
 #============실험================
@@ -80,7 +96,7 @@ torch.cuda.empty_cache()
 
 MODEL_NAME = sys.argv[1] + '_audiocaps'
 if tokenizer_type == 'Custom':
-    MODEL_NAME += '_CustomHeader' 
+    MODEL_NAME += 'CustomHeader' 
 
 createDirectory(MODEL_NAME)
 

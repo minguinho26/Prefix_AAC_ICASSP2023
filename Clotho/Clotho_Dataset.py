@@ -6,6 +6,9 @@ import torchaudio
 import os
 from tqdm import tqdm
 import re
+import string
+
+import util
 
 class ClothoDataset(Dataset):
     
@@ -63,13 +66,12 @@ class ClothoDataset(Dataset):
                 caption = caption.replace(' ,', ',')
                 caption = re.sub(r'[.]', '', caption)
                 
+                caption = caption.strip()
+                caption += '.'
                 
                 if split != 'development' :
                     self.caption_list_for_test.append(caption)
                 elif split == 'development' : 
-                    caption += '.'
-                    caption = caption.strip()
-                    
                     if tokenizer_type == 'GPT2' :
                         tokens = tokenizer(caption)['input_ids']
                     else :
