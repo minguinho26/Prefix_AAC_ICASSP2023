@@ -4,8 +4,6 @@ from pathlib import Path
 import json
 import csv
 from typing import Dict, List, Union, Tuple, Any
-import random
-from datetime import datetime
 
 from coco_caption.pycocotools.coco import COCO
 from coco_caption.pycocoevalcap.eval import COCOEvalCap
@@ -21,7 +19,7 @@ def write_json(data: Union[List[Dict[str, Any]], Dict[str, Any]],
     """ Write a dict or a list of dicts into a JSON file
 
     :param data: Data to write
-    :type data: list[dict[str, any]] or dict[str, any]
+    :type data: list[dict[str, any]] | dict[str, any]
     :param path: Path to the output file
     :type path: Path
     """
@@ -39,8 +37,9 @@ def reformat_to_coco(predictions: List[str],
     :type predictions: list[str]
     :param ground_truths: List of lists of reference captions
     :type ground_truths: list[list[str]]
-    :param ids: List of file IDs. If not given, a running integer is used
-    :type ids: list[int] or None
+    :param ids: List of file IDs. If not given, a running integer\
+                is used
+    :type ids: list[int] | None
     :return: Predictions and reference captions in the MSCOCO format
     :rtype: list[dict[str, any]]
     """
@@ -96,9 +95,9 @@ def evaluate_metrics_from_files(pred_file: Union[Path, str],
     Follows the example in the repo.
 
     :param pred_file: File with predicted captions
-    :type pred_file: Path or str
+    :type pred_file: Path | str
     :param ref_file: File with reference captions
-    :type ref_file: Path or str
+    :type ref_file: Path | str
     :return: Tuple with metrics for the whole dataset and per-file metrics
     :rtype: tuple[dict[str, float], dict[int, dict[str, float]]]
     """
@@ -126,15 +125,18 @@ def evaluate_metrics_from_lists(predictions: List[str],
 
     :param predictions: List of prediction captions
     :type predictions: list[str]
-    :param ground_truths: List of lists of reference captions (one five-caption list per file)
+    :param ground_truths: List of lists of reference captions \
+                         (one five-caption list per file)
     :type ground_truths: list[list[str]]
-    :param ids: Ids for the audio files. If not given, a running integer is used
-    :type ids: list[int] or None
-    :return: Tuple with metrics for the whole dataset and per-file metrics
+    :param ids: Ids for the audio files. If not given, a running \
+                integer is used
+    :type ids: list[int] | None
+    :return: Tuple with metrics for the whole dataset and per-file \
+             metrics
     :rtype: tuple[dict[str, float], dict[int, dict[str, float]]]
     """
     assert(len(predictions) == len(ground_truths))
-    # assert(all([len(i) == 5 for i in ground_truths]))
+    assert(all([len(i) == 5 for i in ground_truths]))
 
     # Running int for id if not given
     if ids is None:
@@ -154,15 +156,14 @@ def evaluate_metrics_from_lists(predictions: List[str],
     if not tmp_dir.is_dir():
         tmp_dir.mkdir()
 
-    unique_id = f'{random.randint(0, 1e6)}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S_%f")}'
-
-    ref_file = tmp_dir.joinpath(f'{unique_id}_ref.json')
-    pred_file = tmp_dir.joinpath(f'{unique_id}_pred.json')
+    ref_file = tmp_dir.joinpath('ref.json')
+    pred_file = tmp_dir.joinpath('pred.json')
 
     write_json(ref, ref_file)
     write_json(pred, pred_file)
 
-    metrics, per_file_metrics = evaluate_metrics_from_files(pred_file, ref_file)
+    metrics, per_file_metrics = evaluate_metrics_from_files(
+        pred_file, ref_file)
 
     # Delete temporary files
     ref_file.unlink()
@@ -173,12 +174,12 @@ def evaluate_metrics_from_lists(predictions: List[str],
 
 def check_and_read_csv(path: Union[str, Path, List[Dict[str, str]]]) \
         -> List[Dict[str, str]]:
-    """ If input is a file path, returns the data as a list of dicts (as returned by DictReader)
-    Otherwise just returns the input
+    """ If input is a file path, returns the data as a list of dicts \
+    (as returned by DictReader) Otherwise just returns the input
 
-    :param path: Input file or its contents (as given by DictReader)
-    :type path: Path, str or list[dict[str, str]]
-    :return: File contents
+    :param path: Input file or its contents (as given by DictReader).
+    :type path: Path | str | list[dict[str, str]]
+    :return: File contents.
     :rtype: list[dict[str, str]]
     """
     if not isinstance(path, list):
@@ -213,7 +214,8 @@ def combine_single_and_per_file_metrics(single_metrics: Dict[str, float],
     :type single_metrics: dict[str, float]
     :param per_file_metrics: Evaluated per-file metrics
     :type per_file_metrics: dict[int, dict[str, float]]
-    :param file_names: List of file names in the order they were given to the metric evaluator
+    :param file_names: List of file names in the order they were given \
+                       to the metric evaluator
     :type file_names: list[str]
     :return: Evaluated metrics in one data structure
     :rtype: dict[str, dict[str, any]]
@@ -264,8 +266,8 @@ def evaluate_metrics(prediction_file: Union[str, Path, List[Dict[str, str]]],
     prediction_file = check_and_read_csv(prediction_file)
     reference_file = check_and_read_csv(reference_file)
 
-    prediction_file.sort(key=lambda the_row: the_row['file_name'])
-    reference_file.sort(key=lambda the_row: the_row['file_name'])
+    prediction_file.sort(key=lambda row: row['file_name'])
+    reference_file.sort(key=lambda row: row['file_name'])
 
     # Make reference file contents indexable by file name
     reference_dict = {}
@@ -286,9 +288,8 @@ def evaluate_metrics(prediction_file: Union[str, Path, List[Dict[str, str]]],
         file_name = row['file_name']
         predictions.append(row['caption_predicted'])
 
-        cap_names = ['caption_{:1d}'.format(i) for i in range(1, 10)]
-        cap_names = cap_names[:(len(reference_dict[file_name]) - 1)]
-       
+        cap_names = ['caption_reference_{:02d}'.format(i) for i in range(1, nb_reference_captions+1)]
+    
         ground_truths.append([reference_dict[file_name][cap] for cap in cap_names])
 
     metrics, per_file_metrics = evaluate_metrics_from_lists(predictions, ground_truths)
@@ -302,4 +303,3 @@ def evaluate_metrics(prediction_file: Union[str, Path, List[Dict[str, str]]],
     }
 
 # EOF
-
