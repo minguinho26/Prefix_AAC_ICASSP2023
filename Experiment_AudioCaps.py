@@ -88,7 +88,7 @@ TEST_BATCH_SIZE = 5
 TRAIN_BATCH_SIZE = 75
 
 test_dataloader  = CreateDataloader(tokenizer, data_dir, TEST_BATCH_SIZE, 'test', prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
-train_dataloader = CreateDataloader(tokenizer, data_dir, TRAIN_BATCH_SIZE, 'train', prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
+train_dataloader = CreateDataloader(tokenizer, data_dir, TRAIN_BATCH_SIZE, 'train', prefix_size, is_TrainDataset = True, tokenizer_type = tokenizer_type)
 
 
 #============실험================

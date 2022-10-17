@@ -83,7 +83,7 @@ TEST_BATCH_SIZE = 5
 TRAIN_BATCH_SIZE = 55
 
 test_dataloader  = CreateDataloader(tokenizer, data_dir, TEST_BATCH_SIZE, 'evaluation', prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
-train_dataloader = CreateDataloader(tokenizer, data_dir, TRAIN_BATCH_SIZE, 'development', prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
+train_dataloader = CreateDataloader(tokenizer, data_dir, TRAIN_BATCH_SIZE, 'development', prefix_size, is_TrainDataset = True, tokenizer_type = tokenizer_type)
 
 # control randomness
 number = 2766
