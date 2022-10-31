@@ -5,6 +5,7 @@ from torch.nn import functional as nnf
 from transformers import GPT2Model
 import numpy as np
 import math
+import copy
 
 from torch.nn import functional as nnf
 
@@ -41,7 +42,7 @@ class MappingNetwork_forTemporalFeature(nn.Module):
         x = self.conv(x) # [batch_size, 2048, 15, 2] -> [batch_size, 768, 15, 1]
         x = self.bn_conv(x) 
         
-        if self.Dataset == 'AudioCaps' :
+        if self.Dataset == 'AudioCaps':
             x = self.relu_conv(x)
         
         x = torch.squeeze(x, 3) # [batch_size, 768, 15, 2] -> [batch_size, 768, 15]
@@ -53,7 +54,7 @@ class MappingNetwork_forTemporalFeature(nn.Module):
         
         prefix = self.prefix_const.unsqueeze(0).expand(x.shape[0], *self.prefix_const.shape)
         prefix = torch.cat((x, prefix), dim=1)
-        out = self.transformer(prefix)[:, self.clip_length:]
+        out = self.transformer(prefix)[:, -self.prefix_length:]
         return out
 
     def __init__(self, dim_embedding: int, prefix_length: int, clip_length: int, num_layers: int = 8, device = 'cuda:1', Dataset = 'AudioCaps'):
@@ -61,7 +62,7 @@ class MappingNetwork_forTemporalFeature(nn.Module):
         
         self.Dataset = Dataset
         
-        self.clip_length = clip_length
+        self.prefix_length = prefix_length
 
         self.device = device
         self.transformer = Transformer(dim_embedding, num_head, num_layers)
@@ -140,9 +141,9 @@ class ClipCap_AAC(nn.Module):
         if self.vocab_size != None :
             logits[:,:,0] = 0.0 
         
-        if self.Dataset == 'Clotho' and self.vocab_size != None :
-            logits_for_clotho = self.language_header_only_for_clotho(out_hidden_states)
-            logits = torch.cat((logits, logits_for_clotho), dim=2)
+#         if self.Dataset == 'Clotho' and self.vocab_size != None :
+#             logits_for_clotho = self.language_header_only_for_clotho(out_hidden_states)
+#             logits = torch.cat((logits, logits_for_clotho), dim=2)
         
         return logits
     
@@ -294,9 +295,7 @@ class ClipCap_AAC(nn.Module):
         elif self.global_prefix_length + self.temporal_prefix_length == 0 :
             global_prefix_vector = self.global_mappingnetwork(global_feature)
             global_prefix_vector = global_prefix_vector.view(global_feature.size()[0], 11, 768)
-            
-            
-            
+
         if self.temporal_prefix_length > 0 and self.global_prefix_length == 0 :
             prefix_vectors = temporal_prefix_vector
         elif self.temporal_prefix_length == 0 and self.global_prefix_length > 0 :
@@ -320,9 +319,9 @@ class ClipCap_AAC(nn.Module):
             if self.vocab_size != None :
                 logits[:,:,0] = 0.0 # '!' token은 사용하지 않기 때문에 예측하지 않게끔 만든다
             
-            if self.Dataset == 'Clotho' and self.vocab_size != None :
-                logits_for_clotho = self.language_header_only_for_clotho(out_hidden_states)
-                logits = torch.cat((logits, logits_for_clotho), dim=2)
+#             if self.Dataset == 'Clotho' and self.vocab_size != None :
+#                 logits_for_clotho = self.language_header_only_for_clotho(out_hidden_states)
+#                 logits = torch.cat((logits, logits_for_clotho), dim=2)
                 
             return logits
         else :
@@ -360,10 +359,12 @@ class ClipCap_AAC(nn.Module):
         
         
         if self.temporal_prefix_length > 0 :
+
             self.temporal_mappingnetwork = MappingNetwork_forTemporalFeature(dim_embedding = self.gpt_embedding_size, 
                                         prefix_length = self.temporal_prefix_length, clip_length = temporal_clip_length, 
                                         num_layers = temporal_num_layers, device = device, Dataset = Dataset)   
         else :
+            print("no temporal mapping network!")
             self.temporal_mappingnetwork = nn.Linear(2048*2, 768, bias = False)
             nn.init.kaiming_uniform_(self.temporal_mappingnetwork.weight)  
             
@@ -372,6 +373,7 @@ class ClipCap_AAC(nn.Module):
                                                 prefix_length = self.global_prefix_length, clip_length = global_clip_length, 
                                                 num_layers = global_num_layers, device = device, Dataset = Dataset)
         else :
+            print("no global mapping network!")
             self.global_mappingnetwork = nn.Linear(527, 11*768, bias = False)
             nn.init.kaiming_uniform_(self.global_mappingnetwork.weight)  
         
@@ -382,17 +384,8 @@ class ClipCap_AAC(nn.Module):
             header_gpt2_header_params = './ClipCap_forAAC/PreTrained_GPT2Header.pt'
             self.language_header.load_state_dict(torch.load(header_gpt2_header_params)) # use pre-trained header
         else :
-            if self.Dataset == 'Clotho' :
-                vocab_size_audiocaps = vocab_size - vocab_size_only_clotho
-                self.language_header = nn.Linear(768, vocab_size_audiocaps, bias=False)
-                nn.init.kaiming_uniform_(self.language_header.weight)  
-                
-                self.language_header_only_for_clotho = nn.Linear(768, vocab_size_only_clotho, bias=False)
-                nn.init.kaiming_uniform_(self.language_header_only_for_clotho.weight)  
-            else :
-                self.language_header = nn.Linear(768, vocab_size, bias=False)
-                nn.init.kaiming_uniform_(self.language_header.weight)  
-                
+            self.language_header = nn.Linear(768, vocab_size, bias=False)
+            nn.init.kaiming_uniform_(self.language_header.weight)    
             
         if pretrain_fromAudioCaps == True :
             
@@ -421,7 +414,17 @@ class ClipCap_AAC(nn.Module):
             
             if folder_name != 'GPT2' :
                 print("Get Pre-traiend language header")
-                self.language_header.load_state_dict(torch.load(language_header_path))
+                
+                temp_header_1 = nn.Linear(768, 7911, bias = False)
+                temp_header_1.load_state_dict(torch.load(language_header_path))
+                
+                temp_header_2 = nn.Linear(768, vocab_size - 7911, bias = False)
+                nn.init.kaiming_uniform_(temp_header_2.weight)
+                
+                with torch.no_grad():
+                    self.language_header.weight[:7911,:] = temp_header_1.weight
+                    self.language_header.weight[7911:,:] = temp_header_2.weight
+                
 
         if encoder_freeze == True :
             for param in self.audio_encoder.parameters():
@@ -431,10 +434,14 @@ class ClipCap_AAC(nn.Module):
         if decoder_freeze == True :
             for param in self.gpt.parameters():
                 param.requires_grad = False
-                
+            is_header_freeze = False    
 #             for param in self.language_header.parameters():
 #                 param.requires_grad = False
+#                 is_header_freeze = True
             print("GPT2 freezing")
+    
+            if is_header_freeze == True :
+                print("header freezing")
             
                 
 def get_ClipCap_AAC(tokenizer, 

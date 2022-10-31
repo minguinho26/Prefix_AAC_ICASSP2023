@@ -10,11 +10,12 @@ import re
 import util
 
 class AudioCapsDataset(Dataset):
-    def __init__(self, tokenizer, data_dir, split, prefix_size, tokenizer_type = 'GPT2') :  # split = 'train' or 'test'
+    def __init__(self, tokenizer, data_dir, split, prefix_size, set_length = 10, tokenizer_type = 'GPT2') :  # split = 'train' or 'test'
         super(AudioCapsDataset, self).__init__()
         
         self.SAMPLE_RATE = 16000
         self.split = split
+        self.set_length = set_length
 
         self.data_dir = data_dir + '/' + split + '/'
         csv_file = pd.read_csv(self.data_dir + split + '.csv')
@@ -88,14 +89,13 @@ class AudioCapsDataset(Dataset):
         audio_file = audio_file.squeeze(0)
         
         # slicing or padding based on set_length
-        set_length = 10
         
         # slicing
-        if audio_file.shape[0] > (self.SAMPLE_RATE * set_length) :
-            audio_file = audio_file[:self.SAMPLE_RATE * set_length]
+        if audio_file.shape[0] > (self.SAMPLE_RATE * self.set_length) :
+            audio_file = audio_file[:self.SAMPLE_RATE * self.set_length]
         # zero padding
-        if audio_file.shape[0] < (self.SAMPLE_RATE * set_length) :
-            pad_len = (self.SAMPLE_RATE * set_length) - audio_file.shape[0]
+        if audio_file.shape[0] < (self.SAMPLE_RATE * self.set_length) :
+            pad_len = (self.SAMPLE_RATE * self.set_length) - audio_file.shape[0]
             pad_val = torch.zeros(pad_len)
             audio_file = torch.cat((audio_file, pad_val), dim=0)
             
