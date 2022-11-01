@@ -2,14 +2,15 @@ import torch
 from torch import nn, Tensor
 import torch.nn as nn
 from torch.nn import functional as nnf
-from transformers import GPT2Model
+from transformers import GPT2Model, GPT2Tokenizer
 import numpy as np
 import math
 import copy
 
 from torch.nn import functional as nnf
 
-from ClipCap_forAAC.PANNs.CNN14 import Cnn14 # audio encoder : PANNs
+from util import *
+from AAC_Prefix.PANNs.CNN14 import Cnn14 # audio encoder : PANNs
 from .Transformer import * # transformer
 
 num_head = 8
@@ -125,7 +126,7 @@ class MappingNetwork_forGlobalFeature(nn.Module):
         print("global feature ver's mapping network : num_head =", num_head, "num_layers =", num_layers)
 
 
-class ClipCap_AAC(nn.Module):
+class AAC_Prefix(nn.Module):
 
     def get_dummy_token(self, batch_size: int, device: torch.device) -> torch.Tensor:
         return torch.zeros(batch_size, (self.temporal_prefix_length + self.global_prefix_length), dtype=torch.int64, device=device)
@@ -338,7 +339,7 @@ class ClipCap_AAC(nn.Module):
                  temporal_num_layers = 2, global_num_layers = 2,
                  pretrain_fromAudioCaps = False, device = 'cuda:1'):
         
-        super(ClipCap_AAC, self).__init__()
+        super(AAC_Prefix, self).__init__()
         self.device = device
         self.Dataset = Dataset
         self.vocab_size = vocab_size
@@ -381,7 +382,7 @@ class ClipCap_AAC(nn.Module):
         
         if vocab_size == None : # If we do not use own vocaburaly
             self.language_header = nn.Linear(768, 50257, bias=False) # 50257 : original vocabulary size of GPT2
-            header_gpt2_header_params = './ClipCap_forAAC/PreTrained_GPT2Header.pt'
+            header_gpt2_header_params = './AAC_Prefix/PreTrained_GPT2Header.pt'
             self.language_header.load_state_dict(torch.load(header_gpt2_header_params)) # use pre-trained header
         else :
             self.language_header = nn.Linear(768, vocab_size, bias=False)
@@ -400,11 +401,11 @@ class ClipCap_AAC(nn.Module):
             global_mappingnetwork_pt_name = 'global_mappingnetwork_' + str(folder_name) + '_in_Audiocaps.pt'
             language_header_pt_name = 'language_header_' + str(folder_name) + '_in_Audiocaps.pt'
 
-            temporal_mappingnetwork_path = './ClipCap_forAAC/pre_trained_params_from_audiocaps/' + \
+            temporal_mappingnetwork_path = './AAC_Prefix/pre_trained_params_from_audiocaps/' + \
                                        str(folder_name) + '/' + temporal_mappingnetwork_pt_name
-            global_mappingnetwork_path = './ClipCap_forAAC/pre_trained_params_from_audiocaps/' + \
+            global_mappingnetwork_path = './AAC_Prefix/pre_trained_params_from_audiocaps/' + \
                                          str(folder_name) + '/' + global_mappingnetwork_pt_name
-            language_header_path = './ClipCap_forAAC/pre_trained_params_from_audiocaps/' + \
+            language_header_path = './AAC_Prefix/pre_trained_params_from_audiocaps/' + \
                                          str(folder_name) + '/' + language_header_pt_name
             
             if self.temporal_prefix_length == 15 :
@@ -444,7 +445,7 @@ class ClipCap_AAC(nn.Module):
                 print("header freezing")
             
                 
-def get_ClipCap_AAC(tokenizer, 
+def get_AAC_Prefix(tokenizer, 
                     vocab_size = None, Dataset = 'AudioCaps',
                     prefix_size_dict = {"temporal_prefix_size" : 10, "global_prefix_size" : 10}, 
                     transformer_num_layers = None, encoder_freeze = True, decoder_freeze = True, 
@@ -470,12 +471,12 @@ def get_ClipCap_AAC(tokenizer,
         vocab_size_only_clotho = vocab_size - 7911
     
     if pretrain_fromAudioCaps == False :
-        checkpoint_path = "./ClipCap_forAAC/PANNs/Cnn14_16k_mAP=0.438.pth"
+        checkpoint_path = "./AAC_Prefix/PANNs/Cnn14_16k_mAP=0.438.pth"
         checkpoint = torch.load(checkpoint_path, map_location=device)
         audio_encoder.load_state_dict(checkpoint['model'])
     else :
         audio_encoder_pt_name = 'audio_encoder_' + str(folder_name) + '_in_Audiocaps.pt'
-        audio_encoder_path = './ClipCap_forAAC/pre_trained_params_from_audiocaps/'  + \
+        audio_encoder_path = './AAC_Prefix/pre_trained_params_from_audiocaps/'  + \
                               str(folder_name) + '/' + audio_encoder_pt_name
            
         audio_encoder.load_state_dict(torch.load(audio_encoder_path))
@@ -485,7 +486,7 @@ def get_ClipCap_AAC(tokenizer,
     temporal_num_layers = transformer_num_layers["temporal_num_layers"]
     global_num_layers = transformer_num_layers["global_num_layers"]
 
-    model = ClipCap_AAC(audio_encoder, tokenizer,
+    model = AAC_Prefix(audio_encoder, tokenizer,
                         encoder_freeze, decoder_freeze, 
                         vocab_size, vocab_size_only_clotho, Dataset,
                         prefix_size_dict = prefix_size_dict, 
@@ -493,3 +494,39 @@ def get_ClipCap_AAC(tokenizer,
                         pretrain_fromAudioCaps = pretrain_fromAudioCaps, device = device)
     
     return model.to(device)
+
+
+def get_model_in_table(table_num, setting_num, device) :
+    transformer_num_layers = {"temporal_num_layers" : 4, "global_num_layers" : 4}
+    prefix_size_dict = {"temporal_prefix_size" : 15, "global_prefix_size" : 11}
+    
+    if (table_num == 1 and setting_num == 1) or (table_num == 2 and setting_num == 2) :
+        Dataset = 'Clotho' 
+    elif (table_num == 1 and setting_num == 2) or (table_num == 1 and setting_num == 3) or (table_num == 2 and setting_num == 1) or (table_num == 2 and setting_num == 3) :
+        Dataset = 'AudioCaps'
+    
+    if setting_num == 1 :
+        tokenizer_type = 'Custom'
+        tokenizer = tokenizer_forCustomVocab(Dataset = Dataset)
+        vocab_size = len(tokenizer.vocab)
+    else :
+        tokenizer_type = 'GPT2'
+        tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+        vocab_size = None
+    
+    model = get_AAC_Prefix(tokenizer, 
+                        vocab_size = vocab_size, Dataset = Dataset,
+                        prefix_size_dict = prefix_size_dict, transformer_num_layers = transformer_num_layers, 
+                        encoder_freeze = True, decoder_freeze = True,
+                        pretrain_fromAudioCaps = False, device = device)
+    
+    if setting_num != 3 :
+        model_path = 'Params_in_Table/Table' + str(table_num) + '_' + str(setting_num) + '_params.pt'
+    else :
+        model_path = 'Params_in_Table/Table1_and_2_3_params.pt'
+    
+    params = torch.load(model_path, map_location = device)
+    
+    model.load_state_dict(params) 
+    
+    return model

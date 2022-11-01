@@ -6,7 +6,7 @@ import random
 # custom
 from FusionDataset import * # 데이터셋
 from transformers import GPT2Tokenizer
-from ClipCap_forAAC.CLIPCAP_forAAC import * # network
+from AAC_Prefix.AAC_Prefix import * # network
 from Train import *
 
 # reproducibility
@@ -81,7 +81,7 @@ createDirectory(MODEL_NAME)
 USE_CUDA = torch.cuda.is_available() 
 device = torch.device('cuda:0' if USE_CUDA else 'cpu')
 
-model = get_ClipCap_AAC(tokenizer, 
+model = get_AAC_Prefix(tokenizer, 
                         vocab_size = vocab_size, Dataset = 'AudioCaps',
                         prefix_size_dict = prefix_size_dict, transformer_num_layers = transformer_num_layers, 
                         encoder_freeze = False, decoder_freeze = True,
