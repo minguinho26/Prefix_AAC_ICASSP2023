@@ -523,7 +523,7 @@ def get_model_in_table(table_num, setting_num, device) :
     if setting_num != 3 :
         model_path = 'Params_in_Table/Table' + str(table_num) + '_' + str(setting_num) + '_params.pt'
     else :
-        model_path = 'Params_in_Table/Table1_and_2_3_params.pt'
+        model_path = 'Params_in_Table/Params_Overall_Dataset.pt'
     
     params = torch.load(model_path, map_location = device)
     

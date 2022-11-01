@@ -11,8 +11,6 @@ import string
 import util
 
 class ClothoDataset(Dataset):
-    
-    
     def compress_audio(self, audio, set_length = 10) :
         
         ratio = audio.size()[1]/(self.SAMPLE_RATE * set_length)
@@ -24,7 +22,7 @@ class ClothoDataset(Dataset):
         
         return audio[:, compress_idx_list]
     
-    def __init__(self, tokenizer, data_dir, split, prefix_size, tokenizer_type = 'GPT2') :  # split = 'development' or 'evaluation'
+    def __init__(self, tokenizer, data_dir, split, prefix_size, tokenizer_type = 'GPT2', is_settingnum_3 = False) :  # split = 'development' or 'evaluation'
         super(ClothoDataset, self).__init__()
         
         self.SAMPLE_RATE = 16000
@@ -50,22 +48,23 @@ class ClothoDataset(Dataset):
            
             audio_file_full_path = self.audio_files_dir + '/' + file
             audio_file, _ = torchaudio.load(audio_file_full_path)
-            audio_file = audio_file.squeeze(0)
             
-            
-            # slicing or padding based on set_length
-            set_length = 30
+            if is_settingnum_3 == False :
+                audio_file = audio_file.squeeze(0)
+                # slicing or padding based on set_length
+                set_length = 30
 
-            # slicing
-            if audio_file.shape[0] > (self.SAMPLE_RATE * set_length) :
-                audio_file = audio_file[:self.SAMPLE_RATE * set_length]
-            # zero padding
-            if audio_file.shape[0] < (self.SAMPLE_RATE * set_length) :
-                pad_len = (self.SAMPLE_RATE * set_length) - audio_file.shape[0]
-                pad_val = torch.zeros(pad_len)
-                audio_file = torch.cat((audio_file, pad_val), dim=0)
+                # slicing
+                if audio_file.shape[0] > (self.SAMPLE_RATE * set_length) :
+                    audio_file = audio_file[:self.SAMPLE_RATE * set_length]
+                # zero padding
+                if audio_file.shape[0] < (self.SAMPLE_RATE * set_length) :
+                    pad_len = (self.SAMPLE_RATE * set_length) - audio_file.shape[0]
+                    pad_val = torch.zeros(pad_len)
+                    audio_file = torch.cat((audio_file, pad_val), dim=0)
+            else :
+                 audio_file = self.compress_audio(audio_file).squeeze(0)
             
-
             for i in range(5) :
                 
                 self.audio_file_list.append(audio_file)

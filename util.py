@@ -51,12 +51,12 @@ class tokenizer_forCustomVocab() :
             with open(file_path, 'rb') as f:
                 self.vocab = pickle.load(f) 
         
-def CreateDataloader(tokenizer, data_dir, batch_size, split, prefix_size, is_TrainDataset = False, tokenizer_type = 'GPT2') :
+def CreateDataloader(tokenizer, data_dir, batch_size, split, prefix_size, is_TrainDataset = False, tokenizer_type = 'GPT2', is_settingnum_3 = False) :
 
     if split == 'train' or split == 'test' :
         dataset = AudioCapsDataset(tokenizer, data_dir, split, prefix_size, set_length = 10, tokenizer_type = tokenizer_type)
     elif split == 'development' or split == 'evaluation' :
-        dataset = ClothoDataset(tokenizer, data_dir, split, prefix_size, tokenizer_type = tokenizer_type)
+        dataset = ClothoDataset(tokenizer, data_dir, split, prefix_size, tokenizer_type = tokenizer_type, is_settingnum_3 = is_settingnum_3)
 
     if is_TrainDataset == True :
         is_shuffle = True
