@@ -54,7 +54,7 @@ class tokenizer_forCustomVocab() :
 def CreateDataloader(tokenizer, data_dir, batch_size, split, prefix_size, is_TrainDataset = False, tokenizer_type = 'GPT2') :
 
     if split == 'train' or split == 'test' :
-        dataset = AudioCapsDataset(tokenizer, data_dir, split, prefix_size, tokenizer_type = tokenizer_type)
+        dataset = AudioCapsDataset(tokenizer, data_dir, split, prefix_size, set_length = 10, tokenizer_type = tokenizer_type)
     elif split == 'development' or split == 'evaluation' :
         dataset = ClothoDataset(tokenizer, data_dir, split, prefix_size, tokenizer_type = tokenizer_type)
 

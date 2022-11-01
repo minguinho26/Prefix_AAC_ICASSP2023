@@ -50,8 +50,22 @@ class ClothoDataset(Dataset):
            
             audio_file_full_path = self.audio_files_dir + '/' + file
             audio_file, _ = torchaudio.load(audio_file_full_path)
-            audio_file = self.compress_audio(audio_file).squeeze(0)
+            audio_file = audio_file.squeeze(0)
             
+            
+            # slicing or padding based on set_length
+            set_length = 30
+
+            # slicing
+            if audio_file.shape[0] > (self.SAMPLE_RATE * set_length) :
+                audio_file = audio_file[:self.SAMPLE_RATE * set_length]
+            # zero padding
+            if audio_file.shape[0] < (self.SAMPLE_RATE * set_length) :
+                pad_len = (self.SAMPLE_RATE * set_length) - audio_file.shape[0]
+                pad_val = torch.zeros(pad_len)
+                audio_file = torch.cat((audio_file, pad_val), dim=0)
+            
+
             for i in range(5) :
                 
                 self.audio_file_list.append(audio_file)
@@ -107,7 +121,8 @@ class ClothoDataset(Dataset):
     
     def __getitem__(self, item: int) :
         
-        if self.split == 'development' :
+        if self.split == 'development' : 
+            
             tokens, mask = self.pad_tokens(item)
             return self.audio_file_list[item], tokens, mask, self.audio_name_list[item]
         else :

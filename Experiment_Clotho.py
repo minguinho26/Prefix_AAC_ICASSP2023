@@ -64,10 +64,6 @@ prefix_size = temporal_prefix_size + global_prefix_size
 transformer_num_layers = {"temporal_num_layers" : 4, "global_num_layers" : 4}
 prefix_size_dict = {"temporal_prefix_size" : temporal_prefix_size, "global_prefix_size" : global_prefix_size}
 
-# prefix_size = global_prefix_size
-
-# prefix_size_dict = {"temporal_prefix_size" : 0, "global_prefix_size" : 0} # mapping network not used
-
 vocab_size = None
 tokenizer_type = None
 
@@ -85,18 +81,26 @@ TRAIN_BATCH_SIZE = 55
 test_dataloader  = CreateDataloader(tokenizer, data_dir, TEST_BATCH_SIZE, 'evaluation', prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
 train_dataloader = CreateDataloader(tokenizer, data_dir, TRAIN_BATCH_SIZE, 'development', prefix_size, is_TrainDataset = True, tokenizer_type = tokenizer_type)
 
-# control randomness
-number = 2766
-print("random seed : ", 2766)
+test_dataloader_audiocaps = CreateDataloader(tokenizer, './AudioCaps', TEST_BATCH_SIZE, 'test', prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
 
-initialization(seed = 2766)  
+# control randomness
+random_seed = 2766
+print("random seed :", 2766)
+print("vocab size :",  vocab_size)
+
+torch.manual_seed(random_seed)
+torch.cuda.manual_seed(random_seed)
+torch.cuda.manual_seed_all(random_seed)
+torch.backends.cudnn.benchmark=False
+torch.backends.cudnn.deterministic=True
+np.random.seed(random_seed)
+random.seed(random_seed)   
 
 #============실험================
 torch.cuda.empty_cache()
 
-MODEL_NAME = sys.argv[1] + '_clotho_seed_' + str(number)
+MODEL_NAME = sys.argv[1] + '_clotho_' + str(random_seed)
 
-MODEL_NAME = sys.argv[1] + '_audiocaps'
 if tokenizer_type == 'Custom':
     MODEL_NAME += 'CustomHeader' 
 
@@ -113,7 +117,7 @@ model = get_ClipCap_AAC(tokenizer,
 
 Train(model, LR, train_dataloader, test_dataloader,
     epochs, model_name = MODEL_NAME, beam_search = True, device = device,
-    Dataset = 'Clotho')
+    Dataset = 'Clotho', test_dataloader_other_dataset = None)
 
 torch.cuda.empty_cache()
 #============실험================

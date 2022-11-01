@@ -56,12 +56,12 @@ epochs = 50
 LR = 5e-5
 
 # PANNs를 써먹기 위해 prefix_size를 수정
-audio_prefix_size = 15
-semantic_prefix_size = 11 
-prefix_size = audio_prefix_size + semantic_prefix_size
+temporal_prefix_size = 15
+global_prefix_size = 11 
+prefix_size = temporal_prefix_size + global_prefix_size
 
 transformer_num_layers = {"temporal_num_layers" : 4, "global_num_layers" : 4}
-prefix_size_dict = {"temporal_prefix_size" : audio_prefix_size, "global_prefix_size" : semantic_prefix_size}
+prefix_size_dict = {"temporal_prefix_size" : temporal_prefix_size, "global_prefix_size" : global_prefix_size}
 
 # prefix_size_dict = {"temporal_prefix_size" : 0, "global_prefix_size" : 0} # mapping network not used
 
@@ -78,17 +78,29 @@ else :
 
 # control randomness
 # number = int(random.uniform(0.0, 9999.0))
-number = 2766
-print("random seed : ", 2766)
 
-initialization(seed = 2766)    
+random_seed=2766
+torch.manual_seed(random_seed)
+torch.cuda.manual_seed(random_seed)
+torch.cuda.manual_seed_all(random_seed)
+torch.backends.cudnn.benchmark=False
+torch.backends.cudnn.deterministic=True
+np.random.seed(random_seed)
+random.seed(random_seed)  
 
+print("random_seed :", random_seed)
+print("vocab_size :", vocab_size)
     
 TEST_BATCH_SIZE = 5
 TRAIN_BATCH_SIZE = 75
 
+if prefix_size == 0 :
+    prefix_size = 26
+
 test_dataloader  = CreateDataloader(tokenizer, data_dir, TEST_BATCH_SIZE, 'test', prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
 train_dataloader = CreateDataloader(tokenizer, data_dir, TRAIN_BATCH_SIZE, 'train', prefix_size, is_TrainDataset = True, tokenizer_type = tokenizer_type)
+
+test_dataloader_clotho = CreateDataloader(tokenizer, './Clotho', TEST_BATCH_SIZE, 'evaluation', prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
 
 
 #============실험================
@@ -96,7 +108,7 @@ torch.cuda.empty_cache()
 
 MODEL_NAME = sys.argv[1] + '_audiocaps'
 if tokenizer_type == 'Custom':
-    MODEL_NAME += 'CustomHeader' 
+    MODEL_NAME += '_CustomHeader' 
 
 createDirectory(MODEL_NAME)
 
@@ -111,7 +123,7 @@ model = get_ClipCap_AAC(tokenizer,
 
 Train(model, LR, train_dataloader, test_dataloader,
     epochs, model_name = MODEL_NAME, beam_search = True, device = device,
-    Dataset = 'AudioCaps')
+    Dataset = 'AudioCaps', test_dataloader_other_dataset = test_dataloader_clotho)
 
 torch.cuda.empty_cache()
 #============실험================
