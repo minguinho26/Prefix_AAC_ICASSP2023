@@ -64,9 +64,9 @@ gdown https://drive.google.com/file/d/1RK-qCJ5UM9sPl5Nh4PCrq3n8GLl1qXmW/view?usp
 3. 다운로드 받은 coco_caption.zip을 압축해제 합니다.
 4. 아래 명령어를 입력합니다. 
 ```
-gdown https://drive.google.com/file/d/1Eh-g3FCZg9UKYbnL5pNGMN1g7IcYQ-ND/view?usp=sharing --fuzzy
+gdown https://drive.google.com/file/d/1y2yeK7eO5DFY8n9l9QfiVRwv6GZLEnFA/view?usp=share_link --fuzzy
 ```
-5. 다운로드 받은 Trained_model_params.zip을 압축해제 합니다.
+5. 다운로드 받은 Params_in_Table.zip을 압축해제 합니다.
 
 
 <br>
