@@ -85,18 +85,22 @@ def Train(model, LR, train_dataloader, test_dataloader, epochs, model_name, beam
         if (epoch >= 14) and ((epoch + 1) % 5 == 0) : 
             eval_model(model, test_dataloader, epoch, model_name, beam_search, device, Dataset, test_dataloader_other_dataset)
             model.train()
-            
+        
+        is_freezing_now = False
+        
         if (epoch + 1 == 16) and (Dataset == 'AudioCaps' or Dataset == 'Fusion') :
-#         if (epoch + 1 == 30) and (Dataset == 'AudioCaps' or Dataset == 'Fusion') :
             for param in model.audio_encoder.parameters():
-                param.requires_grad = False
-            
-        # 모든 parameter를 튜닝 가능한 시점을 찾고 있다...
+                if param.requires_grad == True :
+                    param.requires_grad = False
+                    is_freezing_now = True
+
         elif Dataset == 'Clotho' and (epoch + 1 == 30) : # epoch : 60
             for param in model.audio_encoder.parameters():
-                param.requires_grad = False
-#             for param in model.language_header.parameters():
-#                 param.requires_grad = True
+                if param.requires_grad == True :
+                    param.requires_grad = False
+                    is_freezing_now = True
+        
+        if is_freezing_now == True :
             print("set encoder freeze!")
         
         param_file_path = "./Train_record/params_" + model_name + "/Param_epoch_" + str(epoch) + ".pt"

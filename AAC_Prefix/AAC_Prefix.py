@@ -387,6 +387,7 @@ class AAC_Prefix(nn.Module):
         else :
             self.language_header = nn.Linear(768, vocab_size, bias=False)
             nn.init.kaiming_uniform_(self.language_header.weight)    
+            print("use custom header!")
             
         if pretrain_fromAudioCaps == True :
             
@@ -443,6 +444,8 @@ class AAC_Prefix(nn.Module):
     
             if is_header_freeze == True :
                 print("header freezing")
+            else :
+                print("header trainable!")
             
                 
 def get_AAC_Prefix(tokenizer, 
