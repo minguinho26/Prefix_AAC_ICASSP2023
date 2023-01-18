@@ -6,27 +6,35 @@ AudioCaps, Clotho 각 데이터셋 별로 실험에 사용했던 코드를 정�
 
 ## Network 세팅 
 
+### AudioSet으로 학습된 Encoder의 Pre-trained parameter 다운받기
+
 1. 터미널 실행 후 **ClipCap_forAAC/PANNs** 폴더로 이동합니다.
 2. 아래 명령어를 입력합니다.
    
 ```
 gdown https://drive.google.com/file/d/1O-rPXe_anLArvRG4Z3-nLdBYNO_JaFYL/view?usp=sharing --fuzzy
+```
+
+### Huggingface에서 제공하는 GPT2 header의 pre-trained parameter 다운받기
+
+1. 터미널 실행 후 **ClipCap_forAAC** 폴더로 이동합니다.
+2. 아래 명령어를 입력합니다.
+
+```
+gdown https://drive.google.com/file/d/15ASmIoWg0ac6qm0ixdiVwh88e8EA2MZ7/view?usp=share_link --fuzzy
 
 ```
 
-3. **ClipCap_forAAC** 폴더로 이동합니다.
-4. 아래 명령어를 입력합니다.
-```
-gdown https://drive.google.com/file/d/15ASmIoWg0ac6qm0ixdiVwh88e8EA2MZ7/view?usp=sharing --fuzzy
+### 논문 Table에 나오는 OURS의 parameter들 다운로드 
+
+1. 터미널 실행 후 해당 레포지토리 경로로 이동합니다.(ex : .../AAC_Project_2022)
+2. 아래 명령어를 입력합니다. 
 
 ```
-
-5. 아래 명령어를 입력합니다.
+gdown https://drive.google.com/file/d/1y2yeK7eO5DFY8n9l9QfiVRwv6GZLEnFA/view?usp=share_link --fuzzy
 ```
-gdown https://drive.google.com/file/d/1VK2mCuBgICG2Ckt9PFNS_r0-QQYZUlJk/view?usp=sharing --fuzzy
 
-```
-6. 다운로드 받은 Pre_trained_params.zip을 압축해제 합니다.
+3. 다운로드 받은 Params_in_Table.zip을 압축해제 합니다.
 
 <br>
 
@@ -54,20 +62,13 @@ gdown https://drive.google.com/file/d/15ODyZmXDu_gwl-GcgQ6i_dBIeLKPG5-S/view?usp
 <br>
 <br>
 
-## 기타 세팅
+## Evaluation tools 다운로드
 
-1. AudioCaps, ClipCap_forAAC, Clotho 폴더가 있는 루트 경로로 이동합니다
+1. 터미널 실행 후 **coco_caption** 폴더로 이동합니다.
 2. 아래 명령어를 입력합니다.
 ```
-gdown https://drive.google.com/file/d/1RK-qCJ5UM9sPl5Nh4PCrq3n8GLl1qXmW/view?usp=sharing --fuzzy
+sh get_stanford_models.sh 
 ```
-3. 다운로드 받은 coco_caption.zip을 압축해제 합니다.
-4. 아래 명령어를 입력합니다. 
-```
-gdown https://drive.google.com/file/d/1y2yeK7eO5DFY8n9l9QfiVRwv6GZLEnFA/view?usp=share_link --fuzzy
-```
-5. 다운로드 받은 Params_in_Table.zip을 압축해제 합니다.
-
 
 <br>
 
