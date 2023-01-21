@@ -80,7 +80,7 @@ class MappingNetwork_forTemporalFeature(nn.Module):
         
         self.pos_encoder = PositionalEncoding(d_model=dim_embedding, dropout = 0.5) # positional encoding
         
-        print("temporal feature's mapping network : num_head =", num_head, "num_layers =", num_layers)
+        print("temporal feature ver's mapping network : num_head =", num_head, "num_layers =", num_layers, "prefix_vector_lentgh =", prefix_length)
         
 
 class MappingNetwork_forGlobalFeature(nn.Module):
@@ -102,7 +102,7 @@ class MappingNetwork_forGlobalFeature(nn.Module):
         
         prefix = self.prefix_const.unsqueeze(0).expand(x.shape[0], *self.prefix_const.shape)
         prefix = torch.cat((x, prefix), dim=1)
-        out = self.transformer(prefix)[:, self.clip_length:]
+        out = self.transformer(prefix)[:, -self.prefix_length:]
         return out
 
     def __init__(self, dim_embedding: int, prefix_length: int, clip_length: int, num_layers : int = 8, device = 'cuda:1', Dataset = 'AudioCaps'):
@@ -111,7 +111,7 @@ class MappingNetwork_forGlobalFeature(nn.Module):
         self.device = device
         self.Dataset = Dataset
 
-        self.clip_length = clip_length
+        self.prefix_length = prefix_length
         self.transformer = Transformer(dim_embedding, num_head, num_layers)
         
         self.conv = nn.Conv2d(1, 768, (1, 48), stride=(1, 48), padding=(0, 0))
@@ -123,7 +123,7 @@ class MappingNetwork_forGlobalFeature(nn.Module):
         self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)
         torch.nn.init.kaiming_uniform_(self.prefix_const)
         
-        print("global feature ver's mapping network : num_head =", num_head, "num_layers =", num_layers)
+        print("global feature ver's mapping network : num_head =", num_head, "num_layers =", num_layers, "prefix_vector_lentgh =", prefix_length)
 
 
 class AAC_Prefix(nn.Module):
