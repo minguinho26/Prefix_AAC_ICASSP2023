@@ -24,17 +24,17 @@ def Train(model, LR, train_dataloader, test_dataloader, epochs, model_name, beam
     
     # AudioCaps를 사용할 경우 optimizer의 weight_decay는 0.01이 됨
     if Dataset == 'AudioCaps' :
-#         optimizer = AdamW(model.parameters(), lr=LR, weight_decay = 0.01)
-        optimizer = AdamW(
-                          [
-                            {"params": model.audio_encoder.parameters(), "lr": 2e-5},
-                            {"params": model.temporal_mappingnetwork.parameters(), "lr": 5e-5},
-                            {"params": model.global_mappingnetwork.parameters(), "lr": 5e-5},
-                            {"params": model.language_header.parameters(), "lr": 2e-5},
-                           ],lr=LR, weight_decay = 0.01)
+        optimizer = AdamW(model.parameters(), lr=LR, weight_decay = 0.01) # Custom
+#         optimizer = AdamW( # GPT2 header
+#                           [
+#                             {"params": model.audio_encoder.parameters(), "lr": 2e-5},
+#                             {"params": model.temporal_mappingnetwork.parameters(), "lr": 5e-5},
+#                             {"params": model.global_mappingnetwork.parameters(), "lr": 5e-5},
+#                             {"params": model.language_header.parameters(), "lr": 2e-5},
+#                            ],lr=LR, weight_decay = 0.01)
     else :
-        optimizer = AdamW(model.parameters(), lr=LR, weight_decay = 0.02)
-#         optimizer = AdamW(
+        optimizer = AdamW(model.parameters(), lr=LR, weight_decay = 0.02) # Custom
+#         optimizer = AdamW( # GPT2 header
 #                           [
 #                             {"params": model.audio_encoder.parameters(), "lr": 2e-5},
 #                             {"params": model.temporal_mappingnetwork.parameters(), "lr": 5e-5},
