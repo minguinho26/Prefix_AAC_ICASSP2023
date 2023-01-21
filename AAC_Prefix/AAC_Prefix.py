@@ -80,7 +80,7 @@ class MappingNetwork_forTemporalFeature(nn.Module):
         
         self.pos_encoder = PositionalEncoding(d_model=dim_embedding, dropout = 0.5) # positional encoding
         
-        print("temporal feature ver's mapping network : num_head =", num_head, "num_layers =", num_layers, "prefix_vector_lentgh =", prefix_length)
+        print("temporal feature ver's mapping network : num_head =", num_head, "num_layers =", num_layers, "prefix_vector_length =", prefix_length)
         
 
 class MappingNetwork_forGlobalFeature(nn.Module):
@@ -123,7 +123,7 @@ class MappingNetwork_forGlobalFeature(nn.Module):
         self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)
         torch.nn.init.kaiming_uniform_(self.prefix_const)
         
-        print("global feature ver's mapping network : num_head =", num_head, "num_layers =", num_layers, "prefix_vector_lentgh =", prefix_length)
+        print("global feature ver's mapping network : num_head =", num_head, "num_layers =", num_layers, "prefix_vector_length =", prefix_length)
 
 
 class AAC_Prefix(nn.Module):
@@ -304,10 +304,7 @@ class AAC_Prefix(nn.Module):
         else :
             prefix_vectors = torch.cat((temporal_prefix_vector, global_prefix_vector), dim=1) 
             
-            
-#         prefix_vectors = torch.cat((temporal_prefix_vector, global_prefix_vector), dim=1) 
-#         prefix_vectors = temporal_prefix_vector
-#         prefix_vectors = global_prefix_vector
+           
         if self.training :
             embedding_text = self.gpt.wte(tokens.to(self.device))
             embedding_cat = torch.cat((prefix_vectors, embedding_text), dim=1)
