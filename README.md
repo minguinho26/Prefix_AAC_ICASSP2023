@@ -8,7 +8,7 @@ AudioCaps, Clotho 각 데이터셋 별로 실험에 사용했던 코드를 정�
 
 ### AudioSet으로 학습된 Encoder의 Pre-trained parameter 다운받기
 
-1. 터미널 실행 후 **ClipCap_forAAC/PANNs** 폴더로 이동합니다.
+1. 터미널 실행 후 **AAC_Prefix/PANNs** 폴더로 이동합니다.
 2. 아래 명령어를 입력합니다.
    
 ```
