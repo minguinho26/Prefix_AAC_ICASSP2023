@@ -19,9 +19,6 @@ def Train(model, LR, train_dataloader, test_dataloader, epochs, model_name, beam
     model.train()
     model.to(device)
     
-    warmup_steps = int((epochs * len(train_dataloader)) / 6)
-    num_training_steps=epochs * len(train_dataloader)
-    
     # AudioCaps를 사용할 경우 optimizer의 weight_decay는 0.01이 됨
     if Dataset == 'AudioCaps' :
         optimizer = AdamW(model.parameters(), lr=LR, weight_decay = 0.01) # Custom
@@ -41,7 +38,11 @@ def Train(model, LR, train_dataloader, test_dataloader, epochs, model_name, beam
 #                             {"params": model.global_mappingnetwork.parameters(), "lr": 5e-5},
 #                             {"params": model.language_header.parameters(), "lr": 2e-5},
 #                            ],lr=LR, weight_decay = 0.02)
-        
+    
+
+    warmup_steps = int((epochs * len(train_dataloader)) / 6)
+    num_training_steps=epochs * len(train_dataloader)
+    
     scheduler = get_cosine_schedule_with_warmup(
     optimizer, num_warmup_steps=warmup_steps, num_training_steps=num_training_steps)
     
@@ -52,6 +53,10 @@ def Train(model, LR, train_dataloader, test_dataloader, epochs, model_name, beam
     
     training_consumed_sec = 0
     
+    # Clotho의 scheduler는 60 epoch에 맞춰져 있으나 대부분 초반에 최대 성능을 찍기 때문에 데이터셋 상관없이 50 epoch로 고정 
+    if epochs == 60 : 
+        epochs = 50
+
     for epoch in range(epochs) :
         pbar = tqdm(train_dataloader, desc=f"Training Epoch {epoch}")
         total_loss_per_epopch = 0.0
