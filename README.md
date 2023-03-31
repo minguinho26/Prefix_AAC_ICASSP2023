@@ -1,115 +1,108 @@
-# 코드 소개
+# About the source code
 
-AudioCaps, Clotho 각 데이터셋 별로 실험에 사용했던 코드를 정리했습니다. 
+This repository contains a pytorch implementation for the ICASSP 2023 paper, Prefix tuning for automated audio captioning. 
 
 <br>
 
-## Network 세팅 
+## Model preparation
 
-### AudioSet으로 학습된 Encoder의 Pre-trained parameter 다운받기
+### Downloading the audio encoder pre-trained on AudioSet으로
 
-1. 터미널 실행 후 **AAC_Prefix/PANNs** 폴더로 이동합니다.
-2. 아래 명령어를 입력합니다.
+1. Move to **AAC_Prefix/PANNs**
+2. Type in the command below
    
 ```
 gdown https://drive.google.com/file/d/1O-rPXe_anLArvRG4Z3-nLdBYNO_JaFYL/view?usp=sharing --fuzzy
 ```
 
-### Huggingface에서 제공하는 GPT2 header의 pre-trained parameter 다운받기
+### Downloading the pre-trained GPT2 from Huggingface
 
-1. 터미널 실행 후 **ClipCap_forAAC** 폴더로 이동합니다.
-2. 아래 명령어를 입력합니다.
+1. Move to **ClipCap_forAAC**
+2. Type in the command below
 
 ```
 gdown https://drive.google.com/file/d/15ASmIoWg0ac6qm0ixdiVwh88e8EA2MZ7/view?usp=share_link --fuzzy
 
 ```
 
-### 논문 Table에 나오는 OURS의 parameter들 다운로드 
-
-1. 터미널 실행 후 해당 레포지토리 경로로 이동합니다.(ex : .../AAC_Project_2022)
-2. 아래 명령어를 입력합니다. 
+### Downloading the pre-trained model for this work 
 
 ```
 gdown https://drive.google.com/file/d/1y2yeK7eO5DFY8n9l9QfiVRwv6GZLEnFA/view?usp=share_link --fuzzy
 ```
 
-3. 다운로드 받은 Params_in_Table.zip을 압축해제 합니다.
+3. Unzip the zip file
 
 <br>
 
-## Clotho Dataset 세팅
+## Experiment on Clotho Dataset
 
-1. 터미널 실행 후 **Clotho/clotho_audio_files** 경로로 이동합니다.
-2. 아래 명령어를 입력합니다.
+1. Move to **Clotho/clotho_audio_files**
+2. Type in the command below
 ```
 gdown https://drive.google.com/file/d/1kOuZrOs1yuOwlOky7ZohVVeiVwYQg1V0/view?usp=sharing --fuzzy
 ```
-3. 다운로드 받은 clotho_v1.zip을 압축해제 합니다.
+3. Unzip the zip file
 
 <br>
 
 ## AudioCaps Dataset 세팅
 
-1. 터미널 실행 후 **AudioCaps** 경로로 이동합니다.
-2. 아래 명령어를 입력합니다.
+1. Move to **AudioCaps**
+2. Type in the command below
 
 ```
 gdown https://drive.google.com/file/d/15ODyZmXDu_gwl-GcgQ6i_dBIeLKPG5-S/view?usp=sharing --fuzzy
 ```
-3. 다운로드 받은 AudioCaps_Dataset.zip을 압축해제 합니다.
+3. Unzip the zip file
 
 <br>
 <br>
 
-## Evaluation tools 다운로드
+## Downloading the evaluation tools
 
-1. 터미널 실행 후 **coco_caption** 폴더로 이동합니다.
-2. 아래 명령어를 입력합니다.
+1. Move to **coco_caption**
+2. Type in the command below
 ```
 sh get_stanford_models.sh 
 ```
 
 <br>
 
-# 학습 방법 
-
-Experiment~.py를 다음과 같이 실행하면 됩니다. 
+# Training the model
+ 
 ```
-# GPT2 Tokenizer를 사용하는 경우
-python3 Experiment_AudioCaps.py <실험명>
-python3 Experiment_Clotho.py <실험명>
+# If you are using GPT2 Tokenizer
+python3 Experiment_AudioCaps.py <Experiment_name>
+python3 Experiment_Clotho.py <Experiment_name>
 
-# custom Tokenizer를 사용하는 경우
-python3 Experiment_AudioCaps.py <실험명> <vocabulary의 크기>
-python3 Experiment_Clotho.py <실험명> <vocabulary의 크기>
-```
-
-<br>
-
-# 평가 방법
-
-학습을 수행했다고 가정하겠습니다. 
-
-Evaluation~.py를 다음과 같이 실행하면 됩니다. 
-```
-# GPT2 Tokenizer를 사용하는 경우
-python3 Evaluation_AudioCaps.py <모델명> <몇 번째 epoch에서 학습시켰는지>
-python3 Evaluation_Clotho.py <모델명> <몇 번째 epoch에서 학습시켰는지>
-
-# custom Tokenizer를 사용하는 경우
-python3 Evaluation_AudioCaps.py <모델명> <몇 번째 epoch에서 학습시켰는지> <vocabulary의 크기>
-python3 Evaluation_Clotho.py <모델명> <몇 번째 epoch에서 학습시켰는지> <vocabulary의 크기>
+# If you are using custom Tokenizer
+python3 Experiment_AudioCaps.py <Experiment_name> <vocab_size>
+python3 Experiment_Clotho.py <Experiment_name> <vocab_size>
 ```
 
 <br>
 
-# 추론 방법
+# Evaluation metric
 
-Inference.py를 다음과 같이 실행하면 됩니다. 
+
 ```
-python3 Inference.py <학습시킨 Dataset> <vocabulary 종류> <audio file의 경로>
-# 예
+# GPT2 Tokenizer를 사용하는 경우
+python3 Evaluation_AudioCaps.py <model_name> <epoch_number>
+python3 Evaluation_Clotho.py <model_name> <epoch_number>
+
+# custom Tokenizer를 사용하는 경우
+python3 Evaluation_AudioCaps.py <model_name> <epoch_number> <vocab_size>
+python3 Evaluation_Clotho.py <model_name> <epoch_number> <vocab_size>
+```
+
+<br>
+
+# Inference
+
+```
+python3 Inference.py <Dataset_name> <vocab_type> <audio_path>
+# Example
 python3 Inference.py AudioSet GPT2 ./test.wav
 
 ```
