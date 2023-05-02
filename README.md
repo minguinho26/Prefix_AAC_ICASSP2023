@@ -2,6 +2,8 @@
 
 This repository contains a pytorch implementation for the ICASSP 2023 paper, Prefix tuning for automated audio captioning. 
 
+project page : PrefixAAC.github.io
+
 <br>
 
 ## Model preparation
