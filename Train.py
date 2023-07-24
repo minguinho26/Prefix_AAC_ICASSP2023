@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as nnf
 
-# 평가를 위해 필요한 것들
+# For evaluation
 from typing import MutableMapping, MutableSequence,\
     Any, Union, List, Dict, Tuple
 from eval_metrics import evaluate_metrics
@@ -19,7 +19,6 @@ def Train(model, LR, train_dataloader, test_dataloader, epochs, model_name, beam
     model.train()
     model.to(device)
     
-    # AudioCaps를 사용할 경우 optimizer의 weight_decay는 0.01이 됨
     if Dataset == 'AudioCaps' :
         optimizer = AdamW(model.parameters(), lr=LR, weight_decay = 0.01) # Custom
 #         optimizer = AdamW( # GPT2 header
@@ -53,10 +52,6 @@ def Train(model, LR, train_dataloader, test_dataloader, epochs, model_name, beam
     
     training_consumed_sec = 0
     
-    # Clotho의 scheduler는 60 epoch에 맞춰져 있으나 대부분 초반에 최대 성능을 찍기 때문에 데이터셋 상관없이 50 epoch로 고정 
-    if epochs == 60 : 
-        epochs = 50
-
     for epoch in range(epochs) :
         pbar = tqdm(train_dataloader, desc=f"Training Epoch {epoch}")
         total_loss_per_epopch = 0.0
@@ -122,8 +117,6 @@ def eval_model(model, test_dataloader, epoch, model_name, beam_search, device, D
     model.eval()
     model.to(device)
 
-    # 모아놨다가 한 번에 평가하자
-
     captions_pred: List[Dict] = []
     captions_gt: List[Dict] = []
         
@@ -132,10 +125,6 @@ def eval_model(model, test_dataloader, epoch, model_name, beam_search, device, D
     
     for i, (audio, captions, f_names) in enumerate(tqdm(test_dataloader, desc="Eval using dataset...")):
         with torch.no_grad():
-            # 하나의 raw audio에 대해 5개의 caption이 등장
-            
-            # Test dataset은 audio, caption의 비율이 1:5다 
-            # Batch size를 5로 설정했음. 0번 인덱스 값만 사용할거임
             audio = audio.to(device)
             
             audio = audio[0,:].unsqueeze(0)
@@ -155,8 +144,7 @@ def eval_model(model, test_dataloader, epoch, model_name, beam_search, device, D
                             'caption_reference_03': captions[2],
                             'caption_reference_04': captions[3],
                             'caption_reference_05': captions[4]})
-       
-    # 전체 측정값을 한 번에 method에 넣어서 측정
+
     metrics = evaluate_metrics(captions_pred, captions_gt)
     
     if test_dataloader_other_dataset == None :
@@ -167,10 +155,6 @@ def eval_model(model, test_dataloader, epoch, model_name, beam_search, device, D
         
         for i, (audio, captions, f_names) in enumerate(tqdm(test_dataloader_other_dataset, desc="Eval using other dataset...")):
             with torch.no_grad():
-                # 하나의 raw audio에 대해 5개의 caption이 등장
-
-                # Test dataset은 audio, caption의 비율이 1:5다 
-                # Batch size를 5로 설정했음. 0번 인덱스 값만 사용할거임
                 audio = audio.to(device)
 
                 audio = audio[0,:].unsqueeze(0)
@@ -191,8 +175,6 @@ def eval_model(model, test_dataloader, epoch, model_name, beam_search, device, D
                                 'caption_reference_04': captions[3],
                                 'caption_reference_05': captions[4]})
 
-        # 전체 측정값을 한 번에 method에 넣어서 측정
         metrics_other_dataset = evaluate_metrics(captions_pred_other_dataset, captions_gt_other_dataset)
-
 
         return [metrics, captions_pred, captions_gt], [metrics_other_dataset, captions_pred_other_dataset, captions_gt_other_dataset]

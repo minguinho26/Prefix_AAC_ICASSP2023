@@ -14,27 +14,20 @@ import string
 def fix_caption(caption) :
     caption = caption.lower()
                     
-    # 문장 교정================================
-    # 쉼표 오류 제거
     caption = caption.replace(',', ' , ') 
-    # 공백 줄이기
+
     caption = re.sub(' +', ' ', caption)
     caption = caption.replace(' ,', ',')
-                    
-    # 49275개의 caption 중 192개만 뒤에 마침표 있었다 
-    # 마침표는 잚못 넣은 것으로 판단하여 마침표를 제거한다
+             
     caption = re.sub(r'[.]', '', caption)
                 
     caption += '.'
                    
     caption = caption.strip()
-    # 문장 교정================================
     
     return caption
     
-    
 
-# AudioCaps, Clotho 모두 스까서 학습 시도
 class FusionDataset(Dataset):
     
     def compress_audio(self, audio, set_length = 10) :
@@ -109,8 +102,8 @@ class FusionDataset(Dataset):
             if file[-3:] == 'wav' :
                 file_row_in_csv = audiocaps_csv_file[audiocaps_csv_file['youtube_id'] == file[:-4]]
                 
-                captions = file_row_in_csv['caption'].to_list() # test dataset은 audio 하나에 caption이 5개씩 있음
-                for caption in captions : # 1대 1 매칭 되게끔 넣어줌
+                captions = file_row_in_csv['caption'].to_list() 
+                for caption in captions :
                     
                     self.path_list.append(audiocaps_full_path_prefix + file)
                     self.file_name_list.append(file)
@@ -151,9 +144,8 @@ class FusionDataset(Dataset):
     
     def __getitem__(self, item: int) :
         
-        
         audio_file, _ = torchaudio.load(self.path_list[item])
-        audio_file = audio_file[0,:] # 1차원 벡터
+        audio_file = audio_file[0,:] 
 
         set_length = 10
         
@@ -168,8 +160,6 @@ class FusionDataset(Dataset):
                 audio_file = torch.cat((audio_file, pad_val), dim=0)
         else :
             audio_file = self.compress_audio(audio_file)
-            
-        # raw audio, gpt2_caption, file_name 출력
         
         if self.split == 'train' :
             tokens, mask = self.pad_tokens(item)

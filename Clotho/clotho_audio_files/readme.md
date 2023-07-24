@@ -1,1 +1,1 @@
-clotho dataset의 audio file들을 넣는 폴더
+## Folder for saving the audio files in clotho dataset

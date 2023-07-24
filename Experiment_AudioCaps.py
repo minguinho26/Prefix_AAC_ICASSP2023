@@ -23,7 +23,7 @@ def initialization(seed = 0):
     os.environ['PYTHONHASHSEED'] = str(seed) 
 
 
-# 폴더 생성 메소드
+# Folder creation
 def createDirectory(MODEL_NAME):
     directory = "./Train_record/params_" + MODEL_NAME
     try:
@@ -55,15 +55,12 @@ data_dir = './AudioCaps'
 epochs = 50
 LR = 5e-5
 
-# PANNs를 써먹기 위해 prefix_size를 수정
 temporal_prefix_size = 15
 global_prefix_size = 11 
 prefix_size = temporal_prefix_size + global_prefix_size
 
 transformer_num_layers = {"temporal_num_layers" : 4, "global_num_layers" : 4}
 prefix_size_dict = {"temporal_prefix_size" : temporal_prefix_size, "global_prefix_size" : global_prefix_size}
-
-# prefix_size_dict = {"temporal_prefix_size" : 0, "global_prefix_size" : 0} # mapping network not used
 
 vocab_size = None
 tokenizer_type = None
@@ -77,8 +74,6 @@ else :
     tokenizer_type = 'GPT2'
 
 # control randomness
-# number = int(random.uniform(0.0, 9999.0))
-
 random_seed=2766
 torch.manual_seed(random_seed)
 torch.cuda.manual_seed(random_seed)
@@ -103,7 +98,7 @@ train_dataloader = CreateDataloader(tokenizer, data_dir, TRAIN_BATCH_SIZE, 'trai
 test_dataloader_clotho = CreateDataloader(tokenizer, './Clotho', TEST_BATCH_SIZE, 'evaluation', prefix_size, is_TrainDataset = False, tokenizer_type = tokenizer_type)
 
 
-#============실험================
+#============Experiment================
 torch.cuda.empty_cache()
 
 MODEL_NAME = sys.argv[1] + '_audiocaps'
@@ -126,4 +121,4 @@ Train(model, LR, train_dataloader, test_dataloader,
     Dataset = 'AudioCaps', test_dataloader_other_dataset = test_dataloader_clotho)
 
 torch.cuda.empty_cache()
-#============실험================
+#============Experiment================

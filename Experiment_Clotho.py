@@ -23,7 +23,7 @@ def initialization(seed = 0):
     os.environ['PYTHONHASHSEED'] = str(seed) 
     
 
-# 폴더 생성 메소드
+# Folder creation
 def createDirectory(MODEL_NAME):
     directory = "./Train_record/params_" + MODEL_NAME
     try:
@@ -55,7 +55,6 @@ data_dir = './Clotho'
 epochs = 60
 LR = 5e-5
 
-# PANNs를 써먹기 위해 prefix_size를 수정
 temporal_prefix_size = 15 # 0 or 15
 global_prefix_size = 11 # 0 or 11
 
@@ -96,7 +95,7 @@ torch.backends.cudnn.deterministic=True
 np.random.seed(random_seed)
 random.seed(random_seed)   
 
-#============실험================
+#============Experiment================
 torch.cuda.empty_cache()
 
 MODEL_NAME = sys.argv[1] + '_clotho_' + str(random_seed)
@@ -120,4 +119,4 @@ Train(model, LR, train_dataloader, test_dataloader,
     Dataset = 'Clotho', test_dataloader_other_dataset = None)
 
 torch.cuda.empty_cache()
-#============실험================
+#============Experiment================

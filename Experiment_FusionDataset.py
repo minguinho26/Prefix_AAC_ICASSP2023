@@ -4,7 +4,7 @@ import sys
 import random
 
 # custom
-from FusionDataset import * # 데이터셋
+from FusionDataset import * # dataset
 from transformers import GPT2Tokenizer
 from AAC_Prefix.AAC_Prefix import * # network
 from Train import *
@@ -20,7 +20,7 @@ def initialization(seed = 0):
     torch.backends.cudnn.benchmark = False
     os.environ['PYTHONHASHSEED'] = str(seed) 
 
-# 폴더 생성 메소드
+# Folder creation
 def createDirectory(MODEL_NAME):
     directory = "./Train_record/params_" + MODEL_NAME
     try:
@@ -53,7 +53,6 @@ prefix_size = temporal_prefix_size + global_prefix_size
 transformer_num_layers = {"temporal_num_layers" : 4, "global_num_layers" : 4}
 prefix_size_dict = {"temporal_prefix_size" : temporal_prefix_size, "global_prefix_size" : global_prefix_size}
 
-# argv의 개수가 2개다 : custom vocab을 사용했다
 vocab_size = None
 tokenizer_type = None
 
@@ -71,7 +70,7 @@ print("random seed : ", 2766)
 
 initialization(seed = 2766)  
 
-#============실험================
+#============Experiment================
 torch.cuda.empty_cache()
 
 MODEL_NAME = sys.argv[1] + '_audiocaps'
@@ -92,4 +91,4 @@ Train(model, LR, train_dataloader, test_dataloader,
     Dataset = 'Fusion')
 
 torch.cuda.empty_cache()
-#============실험================
+#============Experiment================

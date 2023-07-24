@@ -68,7 +68,6 @@ class MappingNetwork_forTemporalFeature(nn.Module):
         self.device = device
         self.transformer = Transformer(dim_embedding, num_head, num_layers)
         
-        # 시간대역 별로 특성을 분석
         self.conv = nn.Conv2d(2048, dim_embedding, (1, 2), stride=(1, 1), padding=(0, 0)) # [2048, 15, 2] -> [768, 15, 1]
         torch.nn.init.kaiming_uniform_(self.conv.weight)
         
@@ -315,7 +314,7 @@ class AAC_Prefix(nn.Module):
             logits = self.language_header(out_hidden_states)
             
             if self.vocab_size != None :
-                logits[:,:,0] = 0.0 # '!' token은 사용하지 않기 때문에 예측하지 않게끔 만든다
+                logits[:,:,0] = 0.0 # '!' is not used -> remove the probability of '!' 
             
 #             if self.Dataset == 'Clotho' and self.vocab_size != None :
 #                 logits_for_clotho = self.language_header_only_for_clotho(out_hidden_states)
