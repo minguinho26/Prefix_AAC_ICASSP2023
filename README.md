@@ -29,9 +29,12 @@ gdown https://drive.google.com/file/d/1O-rPXe_anLArvRG4Z3-nLdBYNO_JaFYL/view?usp
 gdown https://drive.google.com/file/d/15ASmIoWg0ac6qm0ixdiVwh88e8EA2MZ7/view?usp=share_link --fuzzy
 
 ```
+3. Unzip the zip file
 
 ### Downloading the pre-trained model for this work 
 
+1. Move to **ClipCap_forAAC**
+2. Type in the command below
 ```
 gdown https://drive.google.com/file/d/1y2yeK7eO5DFY8n9l9QfiVRwv6GZLEnFA/view?usp=share_link --fuzzy
 ```
@@ -40,7 +43,9 @@ gdown https://drive.google.com/file/d/1y2yeK7eO5DFY8n9l9QfiVRwv6GZLEnFA/view?usp
 
 <br>
 
-## Download the Clotho dataset
+## Dataset download
+
+### download the Clotho dataset
 
 1. Move to **Clotho/clotho_audio_files**
 2. Type in the command below
@@ -51,7 +56,7 @@ gdown https://drive.google.com/file/d/1kOuZrOs1yuOwlOky7ZohVVeiVwYQg1V0/view?usp
 
 <br>
 
-## Download the AudioCaps Dataset
+### download the AudioCaps Dataset
 
 1. Move to **AudioCaps**
 2. Type in the command below
@@ -78,12 +83,14 @@ sh get_stanford_models.sh
  
 ```
 # If you are using GPT2 Tokenizer
-python3 Experiment_AudioCaps.py <Experiment_name>
-python3 Experiment_Clotho.py <Experiment_name>
+python3 Experiment_AudioCaps.py <Experiment_name> # AudioCaps Dataset
+python3 Experiment_Clotho.py <Experiment_name> # Clotho Dataset
+python3 Experiment_FusionDataset.py <Experiment_name> # AudioCaps&Clotho Dataset
 
 # If you are using custom Tokenizer
-python3 Experiment_AudioCaps.py <Experiment_name> <vocab_size>
-python3 Experiment_Clotho.py <Experiment_name> <vocab_size>
+python3 Experiment_AudioCaps.py <Experiment_name> <vocab_size> # AudioCaps Dataset
+python3 Experiment_Clotho.py <Experiment_name> <vocab_size> # Clotho Dataset
+python3 Experiment_FusionDataset.py <Experiment_name> # AudioCaps&Clotho Dataset
 ```
 
 <br>
