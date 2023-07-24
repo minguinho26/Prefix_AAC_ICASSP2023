@@ -1,15 +1,17 @@
 # About the source code
 
-This repository contains a pytorch implementation for the ICASSP 2023 paper, [Prefix tuning for automated audio captioning](https://ieeexplore.ieee.org/document/10096877). 
+This repository contains a pytorch implementation for the ICASSP 2023 paper, "Prefix tuning for automated audio captioning" 
+<br>
+[[project page](https://PrefixAAC.github.io)] [[paper](https://ieeexplore.ieee.org/document/10096877)] <br>
 
-[[project page](https://PrefixAAC.github.io)]
 
+![pipeline](./assets/pipeline.jpg)
 
 <br>
 
 ## Model preparation
 
-### Downloading the audio encoder pre-trained on AudioSet으로
+### Downloading the audio encoder pre-trained on AudioSet
 
 1. Move to **AAC_Prefix/PANNs**
 2. Type in the command below
@@ -72,7 +74,7 @@ sh get_stanford_models.sh
 
 <br>
 
-# Training the model
+# Train the model
  
 ```
 # If you are using GPT2 Tokenizer
@@ -86,15 +88,15 @@ python3 Experiment_Clotho.py <Experiment_name> <vocab_size>
 
 <br>
 
-# Evaluation metric
+# Evaluate the model
 
 
 ```
-# GPT2 Tokenizer를 사용하는 경우
+# If you use gpt2 that was pre-trained by Huggingface
 python3 Evaluation_AudioCaps.py <model_name> <epoch_number>
 python3 Evaluation_Clotho.py <model_name> <epoch_number>
 
-# custom Tokenizer를 사용하는 경우
+# If you use a custom tokenizer that was trained by us
 python3 Evaluation_AudioCaps.py <model_name> <epoch_number> <vocab_size>
 python3 Evaluation_Clotho.py <model_name> <epoch_number> <vocab_size>
 ```
@@ -108,4 +110,18 @@ python3 Inference.py <Dataset_name> <vocab_type> <audio_path>
 # Example
 python3 Inference.py AudioSet GPT2 ./test.wav
 
+```
+
+
+# Citation
+
+```
+@inproceedings{kim2023prefix,
+        title={Prefix tuning for automated audio captioning},
+        author={Kim, Minkyu and Sung-Bin, Kim and Oh, Tae-Hyun},
+        booktitle={ICASSP 2023-2023 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)},
+        pages={1--5},
+        year={2023},
+        organization={IEEE}
+      }
 ```
