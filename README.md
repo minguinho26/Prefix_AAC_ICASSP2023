@@ -1,8 +1,9 @@
 # About the source code
 
-This repository contains a pytorch implementation for the ICASSP 2023 paper, Prefix tuning for automated audio captioning. 
+This repository contains a pytorch implementation for the ICASSP 2023 paper, [Prefix tuning for automated audio captioning](https://ieeexplore.ieee.org/document/10096877). 
 
-[project page](https://PrefixAAC.github.io)
+[[project page](https://PrefixAAC.github.io)]
+
 
 <br>
 
@@ -37,7 +38,7 @@ gdown https://drive.google.com/file/d/1y2yeK7eO5DFY8n9l9QfiVRwv6GZLEnFA/view?usp
 
 <br>
 
-## Experiment on Clotho Dataset
+## Download the Clotho dataset
 
 1. Move to **Clotho/clotho_audio_files**
 2. Type in the command below
@@ -48,7 +49,7 @@ gdown https://drive.google.com/file/d/1kOuZrOs1yuOwlOky7ZohVVeiVwYQg1V0/view?usp
 
 <br>
 
-## AudioCaps Dataset 세팅
+## Download the AudioCaps Dataset
 
 1. Move to **AudioCaps**
 2. Type in the command below
@@ -61,7 +62,7 @@ gdown https://drive.google.com/file/d/15ODyZmXDu_gwl-GcgQ6i_dBIeLKPG5-S/view?usp
 <br>
 <br>
 
-## Downloading the evaluation tools
+## Download the audio caption evaluation tools
 
 1. Move to **coco_caption**
 2. Type in the command below
