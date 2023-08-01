@@ -110,12 +110,20 @@ python3 Evaluation_Clotho.py <model_name> <epoch_number> <vocab_size>
 
 <br>
 
-# Inference
+# Inference(Generate the caption using the model in the paper's table 1)
 
 ```
-python3 Inference.py <Dataset_name> <vocab_type> <audio_path>
+python3 Inference.py <table_num> <setting_num> <audio_file_path>
+
+# table_num = 1 : Evaluation on Clotho
+# table_num = 2 : Evaluation on AudioCaps
+
+# setting_num = 1 : train dataset == test dataset
+# setting_num = 2 : train dataset != test dataset
+# setting_num = 3 : overall datasets(Clotho & AudioCaps) <- need to test by using compressed audio
+
 # Example
-python3 Inference.py AudioSet GPT2 ./test.wav
+python3 Inference.py 1 1 ./test.wav
 
 ```
 
