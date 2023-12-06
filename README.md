@@ -97,6 +97,7 @@ python3 Experiment_FusionDataset.py <Experiment_name> # AudioCaps&Clotho Dataset
 
 # Evaluate the model
 
+Update(23.12.6): Please use Evaluation_network.ipynb for evaluation. The evaluation methods were incorporated in that .ipynb file.
 
 ```
 # If you use gpt2 that was pre-trained by Huggingface
